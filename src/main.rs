@@ -3,6 +3,8 @@ use gitlab::Gitlab;
 
 mod projects;
 
+use anyhow::Result;
+
 #[derive(Parser, Debug)]
 struct Args {
     /// Gitlab host
@@ -38,16 +40,18 @@ enum SubCommand {
     },
 }
 
-fn main() {
+fn main() -> Result<()> {
     dotenv::dotenv().ok();
     let args = Args::parse();
 
     let client = Gitlab::new(args.host, args.token).unwrap();
 
     match args.cmd {
-        SubCommand::Projects { group_id} => projects::list(&client, group_id),
+        SubCommand::Projects { group_id } => projects::list(&client, group_id)?,
         SubCommand::Unprotect { group_id, branch } => {
-            projects::unprotect(&client, group_id, &branch);
+            projects::unprotect(&client, group_id, &branch)?;
         }
     }
+
+    Ok(())
 }
