@@ -1,0 +1,5 @@
+pipeline:
+  check:
+    image: rust:1.65
+    commands:
+      - cargo build
