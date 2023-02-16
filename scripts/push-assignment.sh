@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 set -xe
-repo="$HOME/src/software-systems/student-template-repository"
+# CONFIG
+BRANCH="main"
+repo="../../../embedded-systems-lab/template-project"
+# END CONFIG
 cd "$repo"
+REMOTES=$(git remote | grep -v origin)
+
+git checkout "$BRANCH"
 git pull
 
-# CONFIG
-REMOTES=$(git remote | grep -v origin)
-BRANCH="2-performance"
-# END CONFIG
 
 while read -r target_remote; do
 	git push "$target_remote" "$BRANCH"
