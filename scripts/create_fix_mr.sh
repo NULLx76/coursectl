@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -xe
-repo="$HOME/src/software-systems/student-template-repository"
+repo="../../../embedded-systems-lab/template-project"
 cd "$repo"
 
 # CONFIG
 REMOTES=$(git remote | grep --invert-match origin)
 OWN_USER_ID=1027
-SOURCE_BRANCH=1-concurrency-update
-TARGET_BRANCH=1-concurrency
-TITLE="Fix example 3"
-DESCRIPTION="We made a mistake in Example 3 which can cause issues when trying to implement binary mode. This MR should address those issues"
+SOURCE_BRANCH=template-update-0
+TARGET_BRANCH=main
+TITLE="Update quadrupel to v2"
+DESCRIPTION="This fixes some bugs in the library causing occasional panics during boot."
 # END CONFIG
 
 while read -r target_remote; do
