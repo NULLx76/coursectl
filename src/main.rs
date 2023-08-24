@@ -1,9 +1,11 @@
 use clap::{Parser, Subcommand};
-use gitlab::Gitlab;
+use color_eyre::eyre::Result;
+use gitlab::{Gitlab, ProjectId};
+use models::Student;
 
+mod create;
+mod models;
 mod projects;
-
-use anyhow::Result;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -41,11 +43,11 @@ enum SubCommand {
 }
 
 fn main() -> Result<()> {
+    color_eyre::install()?;
     dotenv::dotenv().ok();
     let args = Args::parse();
 
     let client = Gitlab::new(args.host, args.token).unwrap();
-
     match args.cmd {
         SubCommand::Projects { group_id } => projects::list(&client, group_id)?,
         SubCommand::Unprotect { group_id, branch } => {

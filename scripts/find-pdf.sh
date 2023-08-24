@@ -14,7 +14,7 @@ while read -r target_remote; do
 	git checkout "$target_remote"/"$BRANCH"
 	mkdir -p "$OUT"/pdfs/"$target_remote"
 	while read -r file; do
-		if [ "$file" ]; then 
+		if [ "$file" ]; then
 			cp "$file" "$OUT"/pdfs/"$target_remote"/
 		fi
 	done <<<$(rg --files --no-ignore-vcs | rg pdf)
