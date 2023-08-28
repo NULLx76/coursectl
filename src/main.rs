@@ -1,9 +1,10 @@
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::Result;
-use gitlab::{Gitlab, ProjectId};
-use models::Student;
+use gitlab::Gitlab;
 
-mod create;
+mod create_repos;
 mod models;
 mod projects;
 
@@ -40,6 +41,21 @@ enum SubCommand {
         #[arg(required = true)]
         branch: String,
     },
+
+    /// Create Gitlab repos for individual students under a certain group and
+    CreateIndividualRepos {
+        /// Parent Group ID
+        #[arg(required = true)]
+        group_id: u64,
+
+        /// Template Repository to Create per Student
+        #[arg(required = true)]
+        template_repository: String,
+
+        /// Brightspace student list (see README)
+        #[arg(required = true)]
+        student_list: PathBuf,
+    },
 }
 
 fn main() -> Result<()> {
@@ -48,11 +64,19 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     let client = Gitlab::new(args.host, args.token).unwrap();
+
     match args.cmd {
         SubCommand::Projects { group_id } => projects::list(&client, group_id)?,
         SubCommand::Unprotect { group_id, branch } => {
             projects::unprotect(&client, group_id, &branch)?;
         }
+        SubCommand::CreateIndividualRepos {
+            group_id,
+            template_repository,
+            student_list,
+        } => {
+
+        },
     }
 
     Ok(())

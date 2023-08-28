@@ -6,18 +6,13 @@ use gitlab::{
         projects::protected_branches::{ProtectedBranches, UnprotectBranch},
         Query,
     },
-    Gitlab, ProjectId,
+    Gitlab,
 };
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
-struct Project {
-    id: ProjectId,
-    name: String,
-    ssh_url_to_repo: String,
-}
+use crate::models::ProjectInfo;
 
-fn get_projects_by_group(client: &Gitlab, id: u64) -> Result<Vec<Project>> {
+pub(crate) fn get_projects_by_group(client: &Gitlab, id: u64) -> Result<Vec<ProjectInfo>> {
     let endpoint = GroupProjects::builder().group(id).archived(false).build()?;
 
     Ok(paged(endpoint, gitlab::api::Pagination::All).query(client)?)

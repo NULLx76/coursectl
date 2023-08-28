@@ -1,4 +1,11 @@
-use crate::models::{GitlabApiResponse, ProjectInfo, Student};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
+
+use crate::models::{
+    BrightspaceStudent, BrightspaceStudentList, GitlabApiResponse, ProjectInfo, Student,
+};
 use color_eyre::{
     eyre::{eyre, Context, Result},
     Help,
@@ -9,6 +16,44 @@ use gitlab::{
 };
 use http::{header, request::Builder as RequestBuilder};
 use itertools::Itertools;
+
+pub fn create_individual_repos(
+    client: &Gitlab,
+    repo_name_prefix: &str,
+    parent_namespace_id: u64,
+    student_list: impl AsRef<Path>,
+    template_url: &str,
+) -> Result<()> {
+    let file = fs::read_to_string(student_list).wrap_err("failed to read student list file")?;
+    let student_list: BrightspaceStudentList =
+        serde_json::from_str(&file).wrap_err("error reading student json file")?;
+    let students: Result<Vec<Student>> = student_list
+        .students
+        .into_iter()
+        .map(BrightspaceStudent::try_into)
+        .collect();
+
+    let parent_project_names: Vec<String> =
+        crate::projects::get_projects_by_group(client, parent_namespace_id)
+            .wrap_err("failed getting projects under give parent id")?
+            .into_iter()
+            .map(|p| p.name)
+            .collect();
+
+    for s in students.wrap_err("failed to convert brightspace students into students")? {
+        let name = format!("{repo_name_prefix} - {}", s.netid);
+
+        if parent_project_names.iter().any(|pn| pn == &name) {
+            println!("Skipping {}, already has a repo.", s.netid);
+            continue;
+        }
+
+        create_repo_from_template(client, &[s], parent_namespace_id, &name, template_url)
+            .wrap_err("failed creating repo")?;
+    }
+
+    Ok(())
+}
 
 pub fn create_repo_from_template(
     client: &Gitlab,

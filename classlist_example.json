@@ -1,0 +1,9 @@
+{
+    "Students": [
+        {
+            "OrgDefinedID": "netid@tudelft.nl",
+            "StudentNumber": "1234567",
+            "email": "example@student.tudelft.nl"
+        }
+    ]
+}
