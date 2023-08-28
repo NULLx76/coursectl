@@ -71,12 +71,10 @@ fn main() -> Result<()> {
             projects::unprotect(&client, group_id, &branch)?;
         }
         SubCommand::CreateIndividualRepos {
-            group_id,
-            template_repository,
-            student_list,
-        } => {
-
-        },
+            group_id: _,
+            template_repository: _,
+            student_list: _,
+        } => {}
     }
 
     Ok(())
