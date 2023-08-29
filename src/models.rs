@@ -36,8 +36,8 @@ pub struct BrightspaceStudentList {
 
 #[derive(Debug, Deserialize)]
 pub struct BrightspaceStudent {
-    #[serde(alias = "Username")]
-    pub username: String,
+    #[serde(alias = "StudentNumber")]
+    pub student_number: String,
     #[serde(alias = "OrgDefinedID")]
     pub org_defined_id: String,
     pub email: String,
@@ -50,12 +50,12 @@ impl TryInto<Student> for BrightspaceStudent {
         Ok(Student {
             email: self.email,
             student_number: self
-                .org_defined_id
+                .student_number
                 .parse()
                 .wrap_err("failed to convert netid to number")?,
 
             netid: self
-                .username
+                .org_defined_id
                 .strip_suffix("@tudelft.nl")
                 .wrap_err("failed to strip @tudelft.nl from username")?
                 .to_string(),

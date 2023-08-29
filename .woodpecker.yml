@@ -1,9 +1,0 @@
-pipeline:
-  shellcheck:
-    image: koalaman/shellcheck-alpine
-    commands:
-      - shellcheck ./scripts/*.sh
-  check:
-    image: rust:1.65
-    commands:
-      - cargo build

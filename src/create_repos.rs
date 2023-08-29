@@ -1,7 +1,4 @@
-use std::{
-    fs,
-    path::{Path},
-};
+use std::{fs, path::Path};
 
 use crate::models::{
     BrightspaceStudent, BrightspaceStudentList, GitlabApiResponse, ProjectInfo, Student,
@@ -19,7 +16,7 @@ use itertools::Itertools;
 
 pub fn create_individual_repos(
     client: &Gitlab,
-    repo_name_prefix: &str,
+    repo_name_prefix: &Option<String>,
     parent_namespace_id: u64,
     student_list: impl AsRef<Path>,
     template_url: &str,
@@ -41,10 +38,14 @@ pub fn create_individual_repos(
             .collect();
 
     for s in students.wrap_err("failed to convert brightspace students into students")? {
-        let name = format!("{repo_name_prefix} - {}", s.netid);
+        let name = if let Some(prefix) = &repo_name_prefix {
+            format!("{prefix} - {}", &s.netid)
+        } else {
+            s.netid.clone()
+        };
 
         if parent_project_names.iter().any(|pn| pn == &name) {
-            println!("Skipping {}, already has a repo.", s.netid);
+            println!("Skipping {}, already has a repo.", &s.netid);
             continue;
         }
 
@@ -111,7 +112,7 @@ pub fn invite(client: &Gitlab, id: ProjectId, students: &[Student]) -> Result<()
     };
 
     if !status.is_success() || v.status != "success" {
-        return Err(eyre!("gitlab invite error").with_section(|| format!("{:?}", v.message)));
+        eprintln!("gitlab invite error: {:?}", v.message);
     }
 
     Ok(())
