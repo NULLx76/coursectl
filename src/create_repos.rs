@@ -37,6 +37,8 @@ pub fn create_individual_repos(
             .map(|p| p.name)
             .collect();
 
+    let mut n = 0;
+
     for s in students.wrap_err("failed to convert brightspace students into students")? {
         let name = if let Some(prefix) = &repo_name_prefix {
             format!("{prefix} - {}", &s.netid)
@@ -51,7 +53,11 @@ pub fn create_individual_repos(
 
         create_repo_from_template(client, &[s], parent_namespace_id, &name, template_url)
             .wrap_err("failed creating repo")?;
+
+        n += 1;
     }
+
+    println!("Created {n} projects successfully");
 
     Ok(())
 }
@@ -106,12 +112,14 @@ pub fn invite(client: &Gitlab, id: ProjectId, students: &[Student]) -> Result<()
     let v: GitlabApiResponse = if let Ok(v) = serde_json::from_slice(rsp.body()) {
         v
     } else {
-        return Err(
-            eyre!("invite server error {status}").with_section(|| format!("{:?}", rsp.body()))
-        );
+        return Err(eyre!("invite server error {status}").section(format!("{:?}", rsp.body())));
     };
 
-    if !status.is_success() || v.status != "success" {
+    if !status.is_success() {
+        return Err(eyre!("gitlab invite error").section(format!("{:?}", v.message)));
+    }
+
+    if v.status != "success" {
         eprintln!("gitlab invite error: {:?}", v.message);
     }
 
