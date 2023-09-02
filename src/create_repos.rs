@@ -1,7 +1,6 @@
-use std::{fs, path::Path};
-
-use crate::models::{
-    BrightspaceStudent, BrightspaceStudentList, GitlabApiResponse, ProjectInfo, Student,
+use crate::{
+    brightspace::get_students,
+    models::{GitlabApiResponse, ProjectInfo, Student},
 };
 use color_eyre::{
     eyre::{eyre, Context, Result},
@@ -15,22 +14,20 @@ use http::{header, request::Builder as RequestBuilder};
 use indicatif::ProgressIterator;
 use itertools::Itertools;
 
+/// TODO: Do we wanna fix the too many args?
+#[allow(clippy::too_many_arguments)]
 pub fn create_individual_repos(
     client: &Gitlab,
     repo_name_prefix: &Option<String>,
     parent_namespace_id: u64,
-    student_list: impl AsRef<Path>,
     template_url: &str,
     access_level: gitlab::AccessLevel,
+    brightspace_cookie: &str,
+    brightspace_ou: u64,
+    dry_run: bool,
 ) -> Result<()> {
-    let file = fs::read_to_string(student_list).wrap_err("failed to read student list file")?;
-    let student_list: BrightspaceStudentList =
-        serde_json::from_str(&file).wrap_err("error reading student json file")?;
-    let students: Result<Vec<Student>> = student_list
-        .students
-        .into_iter()
-        .map(BrightspaceStudent::try_into)
-        .collect();
+    let students = get_students(brightspace_cookie, brightspace_ou)
+        .wrap_err("failed getting list of students from brightspace")?;
 
     let parent_project_names: Vec<String> =
         crate::projects::get_projects_by_group(client, parent_namespace_id)
@@ -41,12 +38,9 @@ pub fn create_individual_repos(
 
     let mut n = 0;
     let mut skipped = 0;
+    let mut created = Vec::new();
 
-    for s in students
-        .wrap_err("failed to convert brightspace students into students")?
-        .iter()
-        .progress()
-    {
+    for s in students.into_iter().progress() {
         let name = if let Some(prefix) = &repo_name_prefix {
             format!("{prefix} - {}", &s.netid)
         } else {
@@ -59,20 +53,27 @@ pub fn create_individual_repos(
             continue;
         }
 
-        create_repo_from_template(
-            client,
-            &[s],
-            parent_namespace_id,
-            &name,
-            template_url,
-            access_level,
-        )
-        .wrap_err("failed creating repo")?;
+        if dry_run {
+            created.push(s);
+        } else {
+            create_repo_from_template(
+                client,
+                &[&s],
+                parent_namespace_id,
+                &name,
+                template_url,
+                access_level,
+            )
+            .wrap_err("failed creating repo")?;
+        }
 
         n += 1;
     }
 
     println!("Created {n} projects successfully, skipped {skipped} students.");
+    if dry_run {
+        println!("Would have created repo for: {created:?}");
+    }
 
     Ok(())
 }

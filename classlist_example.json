@@ -1,9 +1,16 @@
-{
-    "Students": [
-        {
-            "OrgDefinedID": "netid@tudelft.nl",
-            "StudentNumber": "1234567",
-            "email": "example@student.tudelft.nl"
-        }
-    ]
-}
+[
+    {
+        "Identifier": "1",
+        "ProfileIdentifier": "p1",
+        "DisplayName": "Doe, John",
+        "Username": "jdoe@tudelft.nl",
+        "OrgDefinedId": "12345",
+        "Email": "J.Doe@tudelft.nl",
+        "FirstName": "John",
+        "LastName": "Doe",
+        "RoleId": 110,
+        "LastAccessed": "2023-08-23T8:52:20.032Z",
+        "IsOnline": false,
+        "ClasslistRoleDisplayName": "Student"
+    }
+]

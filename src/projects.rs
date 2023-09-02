@@ -8,6 +8,7 @@ use gitlab::{
     },
     Gitlab,
 };
+use indicatif::ProgressIterator;
 use serde::Deserialize;
 
 use crate::models::ProjectInfo;
@@ -35,11 +36,11 @@ struct Branch {
     name: String,
 }
 
-pub fn unprotect(client: &Gitlab, group: u64, branch: &str) -> Result<()> {
+pub fn unprotect(client: &Gitlab, group: u64, branch: &str, dry_run: bool) -> Result<()> {
     let projects = get_projects_by_group(client, group)?;
     let mut n = 0;
 
-    for project in projects {
+    for project in projects.into_iter().progress() {
         let endpoint = ProtectedBranches::builder()
             .project(project.id.value())
             .build()?;
@@ -47,12 +48,16 @@ pub fn unprotect(client: &Gitlab, group: u64, branch: &str) -> Result<()> {
         let branches: Vec<Branch> = endpoint.query(client)?;
 
         if branches.iter().any(|b| b.name == branch) {
-            let endpoint = UnprotectBranch::builder()
-                .project(project.id.value())
-                .name(branch)
-                .build()?;
+            if dry_run {
+                println!("Dry Run: Unproteced {branch} on {}", project.name);
+            } else {
+                let endpoint = UnprotectBranch::builder()
+                    .project(project.id.value())
+                    .name(branch)
+                    .build()?;
 
-            ignore(endpoint).query(client)?;
+                ignore(endpoint).query(client)?;
+            }
 
             n += 1;
         }
