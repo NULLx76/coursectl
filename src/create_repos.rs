@@ -28,6 +28,9 @@ pub fn create_individual_repos(
         serde_json::from_str(&file).wrap_err("error reading student json file")?;
     let students: Result<Vec<Student>> = student_list
         .into_iter()
+        .filter(|e| {
+            e.role_id == Some(110) // User is a student, TODO: nicer method for this
+        })
         .map(BrightspaceClassListEntry::try_into)
         .collect();
 
