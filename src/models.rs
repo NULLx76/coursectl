@@ -30,18 +30,19 @@ pub struct GitlabApiResponse {
 
 pub type BrightspaceStudentList = Vec<BrightspaceClassListEntry>;
 
+/// See [Brightspace Docs](https://docs.valence.desire2learn.com/res/enroll.html#Enrollment.ClasslistUser)
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct BrightspaceClassListEntry {
     pub identifier: String,
     pub profile_identifier: String,
     pub display_name: String,
-    pub username: String,
-    pub org_defined_id: String,
-    pub email: String,
-    pub first_name: String,
-    pub last_name: String,
-    pub role_id: u64,
+    pub username: Option<String>,
+    pub org_defined_id: Option<String>,
+    pub email: Option<String>,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub role_id: Option<u64>,
     pub last_accessed: Option<String>,
     pub is_online: bool,
     pub classlist_role_display_name: String,
@@ -52,14 +53,16 @@ impl TryInto<Student> for BrightspaceClassListEntry {
 
     fn try_into(self) -> Result<Student> {
         Ok(Student {
-            email: self.email,
+            email: self.email.wrap_err("student missing email")?,
             student_number: self
                 .org_defined_id
+                .wrap_err("student missing student nr.")?
                 .parse()
                 .wrap_err("failed to convert netid to number")?,
 
             netid: self
                 .username
+                .wrap_err("student missing netid")?
                 .strip_suffix("@tudelft.nl")
                 .wrap_err("failed to strip @tudelft.nl from username")?
                 .to_string(),
