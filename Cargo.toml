@@ -14,3 +14,4 @@ clap = { version = "4", features = ["derive", "env"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1" }
 color-eyre = "0.5"
+indicatif = "0.17"

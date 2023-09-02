@@ -12,6 +12,7 @@ use gitlab::{
     Gitlab, ProjectId,
 };
 use http::{header, request::Builder as RequestBuilder};
+use indicatif::ProgressIterator;
 use itertools::Itertools;
 
 pub fn create_individual_repos(
@@ -20,6 +21,7 @@ pub fn create_individual_repos(
     parent_namespace_id: u64,
     student_list: impl AsRef<Path>,
     template_url: &str,
+    access_level: gitlab::AccessLevel,
 ) -> Result<()> {
     let file = fs::read_to_string(student_list).wrap_err("failed to read student list file")?;
     let student_list: BrightspaceStudentList =
@@ -38,8 +40,13 @@ pub fn create_individual_repos(
             .collect();
 
     let mut n = 0;
+    let mut skipped = 0;
 
-    for s in students.wrap_err("failed to convert brightspace students into students")? {
+    for s in students
+        .wrap_err("failed to convert brightspace students into students")?
+        .iter()
+        .progress()
+    {
         let name = if let Some(prefix) = &repo_name_prefix {
             format!("{prefix} - {}", &s.netid)
         } else {
@@ -47,27 +54,36 @@ pub fn create_individual_repos(
         };
 
         if parent_project_names.iter().any(|pn| pn == &name) {
-            println!("Skipping {}, already has a repo.", &s.netid);
+            // println!("Skipping {}, already has a repo.", &s.netid);
+            skipped += 1;
             continue;
         }
 
-        create_repo_from_template(client, &[s], parent_namespace_id, &name, template_url)
-            .wrap_err("failed creating repo")?;
+        create_repo_from_template(
+            client,
+            &[s],
+            parent_namespace_id,
+            &name,
+            template_url,
+            access_level,
+        )
+        .wrap_err("failed creating repo")?;
 
         n += 1;
     }
 
-    println!("Created {n} projects successfully");
+    println!("Created {n} projects successfully, skipped {skipped} students.");
 
     Ok(())
 }
 
 pub fn create_repo_from_template(
     client: &Gitlab,
-    students: &[Student],
+    students: &[&Student],
     parent_namespace_id: u64,
     name: &str,
     template_url: &str,
+    access_level: gitlab::AccessLevel,
 ) -> Result<()> {
     let endpoint = projects::CreateProject::builder()
         .visibility(gitlab::api::common::VisibilityLevel::Private)
@@ -80,14 +96,19 @@ pub fn create_repo_from_template(
 
     let project: ProjectInfo = endpoint.query(client).wrap_err("create project")?;
 
-    invite(client, project.id, students).wrap_err("inviting students")?;
+    invite(client, project.id, students, access_level).wrap_err("inviting students")?;
 
     Ok(())
 }
 
 /// invites users to a gitlab project by project id and student e-mail
 /// See <https://docs.gitlab.com/ee/api/invitations.html>
-pub fn invite(client: &Gitlab, id: ProjectId, students: &[Student]) -> Result<()> {
+pub fn invite(
+    client: &Gitlab,
+    id: ProjectId,
+    students: &[&Student],
+    access_level: gitlab::AccessLevel,
+) -> Result<()> {
     let emails: String =
         Itertools::intersperse(students.iter().map(|s| s.email.as_str()), ",").collect();
 
@@ -97,7 +118,7 @@ pub fn invite(client: &Gitlab, id: ProjectId, students: &[Student]) -> Result<()
 
     let mut params = FormParams::default();
     params.push("email", emails);
-    params.push("access_level", 30);
+    params.push::<_, u64>("access_level", access_level.into());
     let (mime, data) = params.into_body()?.unwrap();
 
     let req = RequestBuilder::new()

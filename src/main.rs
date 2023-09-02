@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::{Context, ContextCompat, Result};
-use gitlab::Gitlab;
+use gitlab::{AccessLevel, Gitlab};
 
 mod create_repos;
 mod models;
@@ -63,6 +63,18 @@ enum SubCommand {
         /// Prefix to add to all created repositories
         #[arg(short = 'p', long = "prefix")]
         repo_name_prefix: Option<String>,
+
+        /// Specify the accesslevel of the users to be added to the repo
+        /// 
+        /// Anonymous => 0,  
+        /// Guest => 10,  
+        /// Reporter => 20,  
+        /// Developer => 30,  
+        /// Maintainer => 40,
+        /// Owner => 50,
+        /// Admin => 60,
+        #[arg(short,long, required = true, default_value_t = AccessLevel::Developer.into())]
+        access_level: u64,
     },
 }
 
@@ -84,6 +96,7 @@ fn main() -> Result<()> {
             mut template_repository,
             student_list,
             repo_name_prefix,
+            access_level,
         } => {
             if template_repository.contains(&args.host) {
                 let (proto, suff) = template_repository
@@ -101,6 +114,7 @@ fn main() -> Result<()> {
                 group_id,
                 student_list,
                 &template_repository,
+                access_level.into(),
             )?;
         }
     }
