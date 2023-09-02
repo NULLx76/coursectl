@@ -4,6 +4,7 @@ use clap::{Parser, Subcommand};
 use color_eyre::eyre::{Context, ContextCompat, Result};
 use gitlab::{AccessLevel, Gitlab};
 
+mod brightspace;
 mod create_repos;
 mod models;
 mod projects;
@@ -65,7 +66,7 @@ enum SubCommand {
         repo_name_prefix: Option<String>,
 
         /// Specify the accesslevel of the users to be added to the repo
-        /// 
+        ///
         /// Anonymous => 0,  
         /// Guest => 10,  
         /// Reporter => 20,  

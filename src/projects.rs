@@ -8,6 +8,7 @@ use gitlab::{
     },
     Gitlab,
 };
+use indicatif::ProgressIterator;
 use serde::Deserialize;
 
 use crate::models::ProjectInfo;
@@ -39,7 +40,7 @@ pub fn unprotect(client: &Gitlab, group: u64, branch: &str) -> Result<()> {
     let projects = get_projects_by_group(client, group)?;
     let mut n = 0;
 
-    for project in projects {
+    for project in projects.into_iter().progress() {
         let endpoint = ProtectedBranches::builder()
             .project(project.id.value())
             .build()?;

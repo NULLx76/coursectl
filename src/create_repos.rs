@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
 use crate::models::{
-    BrightspaceStudent, BrightspaceStudentList, GitlabApiResponse, ProjectInfo, Student,
+    BrightspaceClassListEntry, BrightspaceStudentList, GitlabApiResponse, ProjectInfo, Student,
 };
 use color_eyre::{
     eyre::{eyre, Context, Result},
@@ -27,9 +27,8 @@ pub fn create_individual_repos(
     let student_list: BrightspaceStudentList =
         serde_json::from_str(&file).wrap_err("error reading student json file")?;
     let students: Result<Vec<Student>> = student_list
-        .students
         .into_iter()
-        .map(BrightspaceStudent::try_into)
+        .map(BrightspaceClassListEntry::try_into)
         .collect();
 
     let parent_project_names: Vec<String> =

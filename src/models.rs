@@ -28,34 +28,38 @@ pub struct GitlabApiResponse {
     pub message: HashMap<String, String>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct BrightspaceStudentList {
-    #[serde(alias = "Students")]
-    pub students: Vec<BrightspaceStudent>,
-}
+pub type BrightspaceStudentList = Vec<BrightspaceClassListEntry>;
 
 #[derive(Debug, Deserialize)]
-pub struct BrightspaceStudent {
-    #[serde(alias = "StudentNumber")]
-    pub student_number: String,
-    #[serde(alias = "OrgDefinedID")]
+#[serde(rename_all = "PascalCase")]
+pub struct BrightspaceClassListEntry {
+    pub identifier: String,
+    pub profile_identifier: String,
+    pub display_name: String,
+    pub username: String,
     pub org_defined_id: String,
     pub email: String,
+    pub first_name: String,
+    pub last_name: String,
+    pub role_id: u64,
+    pub last_accessed: Option<String>,
+    pub is_online: bool,
+    pub classlist_role_display_name: String,
 }
 
-impl TryInto<Student> for BrightspaceStudent {
+impl TryInto<Student> for BrightspaceClassListEntry {
     type Error = Report;
 
     fn try_into(self) -> Result<Student> {
         Ok(Student {
             email: self.email,
             student_number: self
-                .student_number
+                .org_defined_id
                 .parse()
                 .wrap_err("failed to convert netid to number")?,
 
             netid: self
-                .org_defined_id
+                .username
                 .strip_suffix("@tudelft.nl")
                 .wrap_err("failed to strip @tudelft.nl from username")?
                 .to_string(),
