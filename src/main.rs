@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::{Context, ContextCompat, Result};
 use gitlab::{AccessLevel, Gitlab};
@@ -22,6 +20,12 @@ struct Args {
     /// Gitlab API user (connected to the token)
     #[arg(long = "user", env = "GITLAB_USER", hide_env_values = true)]
     gitlab_user: String,
+
+    #[arg(long, env = "BRIGHTSPACE_COOKIE", hide_env_values = true)]
+    brightspace_cookie: String,
+
+    #[arg(long, default_value_t = false)]
+    dry_run: bool,
 
     #[clap(subcommand)]
     cmd: SubCommand,
@@ -47,6 +51,11 @@ enum SubCommand {
         branch: String,
     },
 
+    GetClassList {
+        #[arg(required = true)]
+        course_id: u64,
+    },
+
     /// Create Gitlab repos for individual students under a certain group and
     CreateIndividualRepos {
         /// Parent Group ID
@@ -57,9 +66,9 @@ enum SubCommand {
         #[arg(short, long = "template", required = true)]
         template_repository: String,
 
-        /// Brightspace student list (see README)
-        #[arg(short, long, default_value = "./classlist.json", required = true)]
-        student_list: PathBuf,
+        /// Brightspace Organizational Unit (ID)
+        #[arg(long = "ou", required = true)]
+        brightspace_ou: u64,
 
         /// Prefix to add to all created repositories
         #[arg(short = 'p', long = "prefix")]
@@ -90,14 +99,14 @@ fn main() -> Result<()> {
     match args.cmd {
         SubCommand::Projects { group_id } => projects::list(&client, group_id)?,
         SubCommand::Unprotect { group_id, branch } => {
-            projects::unprotect(&client, group_id, &branch)?;
+            projects::unprotect(&client, group_id, &branch, args.dry_run)?;
         }
         SubCommand::CreateIndividualRepos {
             group_id,
             mut template_repository,
-            student_list,
             repo_name_prefix,
             access_level,
+            brightspace_ou,
         } => {
             if template_repository.contains(&args.host) {
                 let (proto, suff) = template_repository
@@ -113,10 +122,16 @@ fn main() -> Result<()> {
                 &client,
                 &repo_name_prefix,
                 group_id,
-                student_list,
                 &template_repository,
                 access_level.into(),
+                &args.brightspace_cookie,
+                brightspace_ou,
+                args.dry_run,
             )?;
+        }
+        SubCommand::GetClassList { course_id } => {
+            let list = brightspace::get_classlist(&args.brightspace_cookie, course_id)?;
+            println!("{list:?}");
         }
     }
 

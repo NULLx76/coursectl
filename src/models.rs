@@ -28,7 +28,7 @@ pub struct GitlabApiResponse {
     pub message: HashMap<String, String>,
 }
 
-pub type BrightspaceStudentList = Vec<BrightspaceClassListEntry>;
+pub type BrightspaceClassList = Vec<BrightspaceClassListEntry>;
 
 /// See [Brightspace Docs](https://docs.valence.desire2learn.com/res/enroll.html#Enrollment.ClasslistUser)
 #[derive(Debug, Deserialize)]
