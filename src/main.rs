@@ -130,8 +130,11 @@ fn main() -> Result<()> {
             )?;
         }
         SubCommand::GetClassList { course_id } => {
-            let list = brightspace::get_classlist(&args.brightspace_cookie, course_id)?;
-            println!("{list:?}");
+            let mut list = brightspace::get_students(&args.brightspace_cookie, course_id)?;
+            list.sort_by_key(|s| s.netid.clone());
+            for entry in list {
+                println!("{:07}, {}", entry.student_number.unwrap_or(0), entry.netid)
+            }
         }
     }
 

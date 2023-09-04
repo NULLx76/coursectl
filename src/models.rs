@@ -10,7 +10,7 @@ use serde::Deserialize;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Student {
     pub email: String,
-    pub student_number: u64,
+    pub student_number: Option<u64>, // Employees don't have a student nr.
     pub netid: String,
 }
 
@@ -56,9 +56,10 @@ impl TryInto<Student> for BrightspaceClassListEntry {
             email: self.email.wrap_err("student missing email")?,
             student_number: self
                 .org_defined_id
+                .as_ref()
                 .wrap_err("student missing student nr.")?
                 .parse()
-                .wrap_err("failed to convert netid to number")?,
+                .ok(),
 
             netid: self
                 .username
