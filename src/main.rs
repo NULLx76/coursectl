@@ -1,3 +1,5 @@
+use std::{fs::File, path::PathBuf};
+
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::{Context, ContextCompat, Result};
 use gitlab::{AccessLevel, Gitlab};
@@ -38,6 +40,14 @@ enum SubCommand {
         /// Gitlab group ID
         #[arg(required = true)]
         group_id: u64,
+    },
+
+    ClasslistCsv {
+        #[arg(required = true)]
+        course_id: u64,
+
+        #[arg(short, long = "file", default_value = "classlist.csv")]
+        output_file: PathBuf,
     },
 
     /// Unprotects a given branch on all projects in a given group
@@ -135,6 +145,19 @@ fn main() -> Result<()> {
             for entry in list {
                 println!("{:07}, {}", entry.student_number.unwrap_or(0), entry.netid)
             }
+        }
+        SubCommand::ClasslistCsv {
+            course_id,
+            output_file,
+        } => {
+            let f = File::create(output_file).wrap_err("could not create output file")?;
+            let mut wtr = csv::Writer::from_writer(f);
+
+            brightspace::get_students(&args.brightspace_cookie, course_id)?
+                .iter()
+                .try_for_each(|el| wtr.serialize(el))?;
+
+            wtr.flush()?;
         }
     }
 

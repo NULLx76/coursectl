@@ -2,4 +2,4 @@
 .env
 pdfs/
 *.zip
-classlist.json
+classlist.*

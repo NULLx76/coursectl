@@ -1,17 +1,17 @@
 use std::collections::HashMap;
 
 use color_eyre::{
-    eyre::{Context, ContextCompat},
+    eyre::ContextCompat,
     Report, Result,
 };
 use gitlab::ProjectId;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub struct Student {
-    pub email: String,
-    pub student_number: Option<u64>, // Employees don't have a student nr.
     pub netid: String,
+    pub student_number: Option<u64>, // Employees don't have a student nr.
+    pub email: String,
 }
 
 #[derive(Debug, Deserialize)]
