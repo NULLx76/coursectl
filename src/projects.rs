@@ -32,7 +32,7 @@ pub fn list(client: &Gitlab, id: u64) -> Result<()> {
 
 #[derive(Debug, Deserialize)]
 struct Branch {
-    _id: u64,
+    id: u64,
     name: String,
 }
 

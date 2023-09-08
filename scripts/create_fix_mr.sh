@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -xe
-repo="../../../embedded-systems-lab/template-project"
+repo="../../software-fundamentals/individual-assignment-template"
 cd "$repo"
 
 # CONFIG
 REMOTES=$(git remote | grep --invert-match origin)
 OWN_USER_ID=1027
-SOURCE_BRANCH=template-update-0
+SOURCE_BRANCH=minor-fix-1
 TARGET_BRANCH=main
-TITLE="Update quadrupel to v2"
-DESCRIPTION="This fixes some bugs in the library causing occasional panics during boot."
+TITLE="Minor Fix 1 for Template"
+DESCRIPTION="There was a required method call missing in the template for actually generating the HTML. This PR adds that."
 # END CONFIG
 
 while read -r target_remote; do

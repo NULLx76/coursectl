@@ -57,7 +57,7 @@ enum SubCommand {
         group_id: u64,
 
         /// Branch to unprotect
-        #[arg(required = true)]
+        #[arg(default_value = "main")]
         branch: String,
     },
 
@@ -93,7 +93,7 @@ enum SubCommand {
         /// Maintainer => 40,
         /// Owner => 50,
         /// Admin => 60,
-        #[arg(short,long, required = true, default_value_t = AccessLevel::Developer.into())]
+        #[arg(short,long, default_value_t = AccessLevel::Developer.into())]
         access_level: u64,
     },
 }
