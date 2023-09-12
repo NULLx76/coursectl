@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -xe
 
-groups=$(cargo run -- projects 20197)
-branch="2-performance"
+groups=$(cargo run -- projects 23125)
+branch="main"
 
 mkdir -p student_solutions
 cd student_solutions
