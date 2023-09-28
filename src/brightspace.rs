@@ -1,21 +1,22 @@
-use crate::models::{BrightspaceClassList, BrightspaceClassListEntry, Student};
+use crate::models::{
+    BrightspaceClassList, BrightspaceClassListEntry, Student,
+};
 use color_eyre::{eyre::Context, Result};
+use http::Uri;
 
-#[inline]
-fn classlist_url(ou: u64) -> String {
-    format!("https://brightspace.tudelft.nl/d2l/api/le/1.72/{ou}/classlist/")
-}
 
-pub fn get_classlist(cookie: &str, ou: u64) -> Result<BrightspaceClassList> {
-    let url = classlist_url(ou);
+const BRIGHTSPACE_API_VERSION: &str = "1.72";
+
+pub fn get_classlist(base_url: &Uri, cookie: &str, ou: u64) -> Result<BrightspaceClassList> {
+    let url = format!("{base_url}d2l/api/le/{BRIGHTSPACE_API_VERSION}/{ou}/classlist/");
     let res: BrightspaceClassList = ureq::get(&url).set("Cookie", cookie).call()?.into_json()?;
 
     Ok(res)
 }
 
-pub fn get_students(cookie: &str, ou: u64) -> Result<Vec<Student>> {
-    let classlist =
-        get_classlist(cookie, ou).wrap_err("failed getting classlist from brightspace")?;
+pub fn get_students(base_url: &Uri, cookie: &str, ou: u64) -> Result<Vec<Student>> {
+    let classlist = get_classlist(base_url, cookie, ou)
+        .wrap_err("failed getting classlist from brightspace")?;
 
     classlist
         .into_iter()
@@ -24,6 +25,7 @@ pub fn get_students(cookie: &str, ou: u64) -> Result<Vec<Student>> {
         .collect()
 }
 
+/// <https://docs.valence.desire2learn.com/res/grade.html#get--d2l-api-le-(version)-(orgUnitId)-grades-(gradeObjectId)-values->
 #[cfg(test)]
 mod tests {
     use crate::models::BrightspaceClassList;

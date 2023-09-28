@@ -1,17 +1,20 @@
 use std::collections::HashMap;
 
-use color_eyre::{
-    eyre::ContextCompat,
-    Report, Result,
-};
+use color_eyre::{eyre::ContextCompat, Report, Result};
 use gitlab::ProjectId;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Student {
     pub netid: String,
     pub student_number: Option<u64>, // Employees don't have a student nr.
     pub email: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct Group {
+    pub name: String,
+    pub members: Vec<Student>
 }
 
 #[derive(Debug, Deserialize)]
@@ -70,3 +73,22 @@ impl TryInto<Student> for BrightspaceClassListEntry {
         })
     }
 }
+
+/// See: <https://docs.valence.desire2learn.com/res/apiprop.html#Version.ProductVersions>
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct BrightspaceProductVersions {
+    pub product_code: String,
+    pub latest_version: String,
+    pub supported_versions: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct BrightspaceGradeObjects {
+    pub objects: Vec<BrightspaceGradeObject>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct BrightspaceGradeObject {}

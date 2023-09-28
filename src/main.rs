@@ -8,6 +8,7 @@ mod brightspace;
 mod create_repos;
 mod models;
 mod projects;
+mod groups;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -22,6 +23,9 @@ struct Args {
     /// Gitlab API user (connected to the token)
     #[arg(long = "user", env = "GITLAB_USER", hide_env_values = true)]
     gitlab_user: String,
+
+    #[arg(long, default_value = "https://brightspace.tudelft.nl")]
+    brightspace_base_url: http::Uri,
 
     #[arg(long, env = "BRIGHTSPACE_COOKIE", hide_env_values = true)]
     brightspace_cookie: String,
@@ -135,12 +139,17 @@ fn main() -> Result<()> {
                 &template_repository,
                 access_level.into(),
                 &args.brightspace_cookie,
+                &args.brightspace_base_url,
                 brightspace_ou,
                 args.dry_run,
             )?;
         }
         SubCommand::GetClassList { course_id } => {
-            let mut list = brightspace::get_students(&args.brightspace_cookie, course_id)?;
+            let mut list = brightspace::get_students(
+                &args.brightspace_base_url,
+                &args.brightspace_cookie,
+                course_id,
+            )?;
             list.sort_by_key(|s| s.netid.clone());
             for entry in list {
                 println!("{:07}, {}", entry.student_number.unwrap_or(0), entry.netid)
@@ -153,9 +162,13 @@ fn main() -> Result<()> {
             let f = File::create(output_file).wrap_err("could not create output file")?;
             let mut wtr = csv::Writer::from_writer(f);
 
-            brightspace::get_students(&args.brightspace_cookie, course_id)?
-                .iter()
-                .try_for_each(|el| wtr.serialize(el))?;
+            brightspace::get_students(
+                &args.brightspace_base_url,
+                &args.brightspace_cookie,
+                course_id,
+            )?
+            .iter()
+            .try_for_each(|el| wtr.serialize(el))?;
 
             wtr.flush()?;
         }

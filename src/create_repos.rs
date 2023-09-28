@@ -10,9 +10,14 @@ use gitlab::{
     api::{projects, Client, FormParams, Query, RestClient},
     Gitlab, ProjectId,
 };
-use http::{header, request::Builder as RequestBuilder};
+use http::{header, request::Builder as RequestBuilder, Uri};
 use indicatif::ProgressIterator;
 use itertools::Itertools;
+
+pub fn create_group_repos(client: &Gitlab, parent_namespace_id: u64, template_url: &str, access_level: gitlab::AccessLevel, dry_run: bool) -> Result<()> {
+
+    Ok(())
+}
 
 /// TODO: Do we wanna fix the too many args?
 #[allow(clippy::too_many_arguments)]
@@ -23,10 +28,11 @@ pub fn create_individual_repos(
     template_url: &str,
     access_level: gitlab::AccessLevel,
     brightspace_cookie: &str,
+    brightspace_base_url: &Uri,
     brightspace_ou: u64,
     dry_run: bool,
 ) -> Result<()> {
-    let students = get_students(brightspace_cookie, brightspace_ou)
+    let students = get_students(brightspace_base_url, brightspace_cookie, brightspace_ou)
         .wrap_err("failed getting list of students from brightspace")?;
 
     let parent_project_names: Vec<String> =
