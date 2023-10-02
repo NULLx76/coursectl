@@ -1,6 +1,6 @@
 use crate::{
     brightspace::get_students,
-    models::{GitlabApiResponse, ProjectInfo, Student},
+    models::{GitlabApiResponse, Group, ProjectInfo, Student},
 };
 use color_eyre::{
     eyre::{eyre, Context, Result},
@@ -14,8 +14,39 @@ use http::{header, request::Builder as RequestBuilder, Uri};
 use indicatif::ProgressIterator;
 use itertools::Itertools;
 
-pub fn create_group_repos(client: &Gitlab, parent_namespace_id: u64, template_url: &str, access_level: gitlab::AccessLevel, dry_run: bool) -> Result<()> {
+// Creates Gitlab Repos inviting all group members
+pub fn create_group_repos(
+    client: &Gitlab,
+    parent_namespace_id: u64,
+    template_url: &str,
+    access_level: gitlab::AccessLevel,
+    groups: Vec<Group>,
+    dry_run: bool,
+) -> Result<()> {
+    let mut n = 0;
+    let mut created = Vec::new();
+    for g in groups.iter().progress() {
+        if dry_run {
+            created.push(g);
+        } else {
+            create_repo_from_template(
+                client,
+                g.members.iter().collect_vec().as_ref(),
+                parent_namespace_id,
+                &g.name,
+                template_url,
+                access_level,
+            )
+            .wrap_err(format!("failed creating repo for: {}", g.name))?;
+        }
 
+        n += 1;
+    }
+
+    println!("Created {n} projects successfully.");
+    if dry_run {
+        println!("Would have created repo for: {created:#?}");
+    }
     Ok(())
 }
 

@@ -1,9 +1,6 @@
-use crate::models::{
-    BrightspaceClassList, BrightspaceClassListEntry, Student,
-};
+use crate::models::{BrightspaceClassList, BrightspaceClassListEntry, Student};
 use color_eyre::{eyre::Context, Result};
 use http::Uri;
-
 
 const BRIGHTSPACE_API_VERSION: &str = "1.72";
 

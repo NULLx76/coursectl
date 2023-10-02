@@ -1,14 +1,17 @@
-use std::{fs::File, path::PathBuf};
+use std::{collections::HashMap, fs::File, path::PathBuf};
 
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::{Context, ContextCompat, Result};
 use gitlab::{AccessLevel, Gitlab};
+use itertools::Itertools;
+use models::StudentGroupEntry;
+
+use crate::models::Group;
 
 mod brightspace;
 mod create_repos;
 mod models;
 mod projects;
-mod groups;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -100,6 +103,37 @@ enum SubCommand {
         #[arg(short,long, default_value_t = AccessLevel::Developer.into())]
         access_level: u64,
     },
+
+    /// Create Gitlab groups based on a CSV file, see `group_example.csv` for the format
+    CreateGroupsFromCsv {
+        /// Parent Group ID
+        #[arg(short, long, required = true)]
+        group_id: u64,
+
+        /// Path to CSV file
+        #[arg(short, long, required = true)]
+        csv: PathBuf,
+
+        /// Template Repository to use for each student (has to be public)
+        #[arg(short, long = "template", required = true)]
+        template_repository: String,
+
+        /// Brightspace Organizational Unit (ID)
+        #[arg(long = "ou", required = true)]
+        brightspace_ou: u64,
+
+        /// Specify the accesslevel of the users to be added to the repo
+        ///
+        /// Anonymous => 0,  
+        /// Guest => 10,  
+        /// Reporter => 20,  
+        /// Developer => 30,  
+        /// Maintainer => 40,
+        /// Owner => 50,
+        /// Admin => 60,
+        #[arg(short,long, default_value_t = AccessLevel::Developer.into())]
+        access_level: u64,
+    },
 }
 
 fn main() -> Result<()> {
@@ -171,6 +205,56 @@ fn main() -> Result<()> {
             .try_for_each(|el| wtr.serialize(el))?;
 
             wtr.flush()?;
+        }
+
+        SubCommand::CreateGroupsFromCsv {
+            group_id,
+            csv,
+            template_repository,
+            brightspace_ou,
+            access_level,
+        } => {
+            let brightspace_students = brightspace::get_students(
+                &args.brightspace_base_url,
+                &args.brightspace_cookie,
+                brightspace_ou,
+            )?;
+
+            let mut rdr = csv::Reader::from_reader(
+                File::open(csv.as_path())
+                    .wrap_err_with(|| format!("Could not open file {:?}", csv))?,
+            );
+            let mut groups: HashMap<String, Group> = HashMap::new();
+            for row in rdr.deserialize() {
+                let group_entry: StudentGroupEntry = row?;
+
+                // yes I know this is O(bad)
+                let student = brightspace_students
+                    .iter()
+                    .find(|b| b.netid == group_entry.netid.to_lowercase().trim())
+                    .wrap_err_with(|| {
+                        format!("student not found in brightspace {:?}", group_entry)
+                    })?;
+
+                groups
+                    .entry(group_entry.group_name.clone())
+                    .and_modify(|f| {
+                        f.members.push(student.clone());
+                    })
+                    .or_insert(Group {
+                        name: group_entry.group_name.clone(),
+                        members: vec![student.clone()],
+                    });
+            }
+
+            create_repos::create_group_repos(
+                &client,
+                group_id,
+                &template_repository,
+                AccessLevel::from(access_level),
+                groups.values().cloned().collect_vec(),
+                args.dry_run,
+            )?;
         }
     }
 

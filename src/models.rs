@@ -12,9 +12,17 @@ pub struct Student {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct StudentGroupEntry {
+    pub group_name: String,
+    pub full_name: String,
+    pub netid: String,
+    pub student_number: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Group {
     pub name: String,
-    pub members: Vec<Student>
+    pub members: Vec<Student>,
 }
 
 #[derive(Debug, Deserialize)]

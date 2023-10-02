@@ -17,3 +17,4 @@ color-eyre = "0.5"
 indicatif = "0.17"
 ureq = { version = "2.7", features = ["json"] }
 csv = "1.2.2"
+rand = "0.8.5"
