@@ -22,10 +22,28 @@ pub fn get_students(base_url: &Uri, cookie: &str, ou: u64) -> Result<Vec<Student
         .collect()
 }
 
+const GROUP_EXPORT_URL: &str = "https://group-impexp.lti.tudelft.nl/export/";
+
+pub fn get_groups(sessionid: &str, category: &str) -> Result<()> {
+    let res = ureq::post(GROUP_EXPORT_URL)
+        .set("Cookie", &format!("sessionid={sessionid}"))
+        .send_form(&[("resource_link_id", "2116724775"), ("categories", category)])?;
+
+    Ok(())
+}
+
 /// <https://docs.valence.desire2learn.com/res/grade.html#get--d2l-api-le-(version)-(orgUnitId)-grades-(gradeObjectId)-values->
 #[cfg(test)]
 mod tests {
     use crate::models::BrightspaceClassList;
+
+    use super::get_groups;
+
+    #[test]
+    #[ignore = "flaky"]
+    pub fn test_get_group() {
+        get_groups("SESSION_ID", "49218").unwrap()
+    }
 
     #[test]
     pub fn try_parse() {

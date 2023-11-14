@@ -7,12 +7,13 @@ use color_eyre::{
     Help,
 };
 use gitlab::{
-    api::{projects, Client, FormParams, Query, RestClient},
-    Gitlab, ProjectId,
+    api::{projects, users, Client, FormParams, Query, RestClient},
+    Gitlab, ProjectId, UserId,
 };
 use http::{header, request::Builder as RequestBuilder, Uri};
 use indicatif::ProgressIterator;
 use itertools::Itertools;
+use serde::Deserialize;
 
 // Creates Gitlab Repos inviting all group members
 pub fn create_group_repos(
@@ -134,9 +135,60 @@ pub fn create_repo_from_template(
 
     let project: ProjectInfo = endpoint.query(client).wrap_err("create project")?;
 
-    invite(client, project.id, students, access_level).wrap_err("inviting students")?;
+    add_students_to_project(client, project.id, students, access_level)
+}
 
-    Ok(())
+fn add_students_to_project(client: &Gitlab, project: ProjectId, students: &[&Student], access_level: gitlab::AccessLevel) -> Result<()> {
+
+    let mut to_invite = vec![];
+
+    for &student in students {
+        if let Some(id) = query_user(client, student)? {
+            todo!()
+        } else {
+            to_invite.push(student);
+        }
+
+    }
+
+    invite(client, project, &to_invite, access_level)
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UserInfo {
+    id: UserId,
+}
+
+fn query_user(client: &Gitlab, student: &Student) -> Result<Option<UserInfo>> {
+    fn query_user_by_username(client: &Gitlab, student: &str) -> Result<Option<UserInfo>> {
+        let endpoint = users::Users::builder()
+            .username(student)
+            .build()
+            .wrap_err("users builder")?;
+
+        let mut users: Vec<UserInfo> = endpoint
+            .query(client)
+            .wrap_err("query gitlab for username")?;
+
+        Ok((!users.is_empty()).then(|| users.swap_remove(0)))
+    }
+
+    fn query_user_by_email(client: &Gitlab, student: &Student) -> Result<Option<UserInfo>> {
+        let endpoint = users::Users::builder()
+            .search(&student.email)
+            .build()
+            .wrap_err("users builder")?;
+
+        let mut users: Vec<UserInfo> = endpoint.query(client).wrap_err("query gitlab for email")?;
+
+        Ok((!users.is_empty()).then(|| users.swap_remove(0)))
+    }
+
+    let student1 = format!("{}1", student.netid); // How much of a hack is this?
+
+    Ok(query_user_by_username(client, &student.netid)?
+        .or(query_user_by_email(client, student)?)
+        .or(query_user_by_username(client, student1.as_str())?))
 }
 
 /// invites users to a gitlab project by project id and student e-mail
@@ -147,6 +199,10 @@ pub fn invite(
     students: &[&Student],
     access_level: gitlab::AccessLevel,
 ) -> Result<()> {
+    if students.is_empty() {
+        return Ok(());
+    }
+
     let emails: String =
         Itertools::intersperse(students.iter().map(|s| s.email.as_str()), ",").collect();
 

@@ -3,9 +3,10 @@ set -xe
 
 groups=$(cargo run -- projects 23180)
 branch="main"
+dir="student_solutions_$(date --iso-8601=seconds)"
 
-mkdir -p student_solutions
-cd student_solutions
+mkdir -p "$dir"
+cd "$dir"
 
 # TODO: Pull if dir exists
 while read -ra arr; do
