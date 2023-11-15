@@ -1,4 +1,8 @@
-use crate::models::{BrightspaceClassList, BrightspaceClassListEntry, Student};
+use std::collections::HashMap;
+
+use crate::models::{
+    BrightspaceClassList, BrightspaceClassListEntry, BrightspaceGroupRecord, Group, Student,
+};
 use color_eyre::{eyre::Context, Result};
 use http::Uri;
 
@@ -24,12 +28,33 @@ pub fn get_students(base_url: &Uri, cookie: &str, ou: u64) -> Result<Vec<Student
 
 const GROUP_EXPORT_URL: &str = "https://group-impexp.lti.tudelft.nl/export/";
 
-pub fn get_groups(sessionid: &str, category: &str) -> Result<()> {
+pub fn get_groups(sessionid: &str, category: &str) -> Result<Vec<Group>> {
     let res = ureq::post(GROUP_EXPORT_URL)
         .set("Cookie", &format!("sessionid={sessionid}"))
         .send_form(&[("resource_link_id", "2116724775"), ("categories", category)])?;
 
-    Ok(())
+    let s = res
+        .into_string()?
+        .lines()
+        .filter(|line| !line.starts_with(','))
+        .fold(String::new(), |a, b| a + b + "\n");
+
+    let mut reader = csv::Reader::from_reader(s.as_bytes());
+
+    let mut hm: HashMap<String, Vec<Student>> = HashMap::new();
+
+    for row in reader.deserialize() {
+        let student: BrightspaceGroupRecord = row?;
+        let group_name = student.group_name.replace(' ', "");
+
+        let s: Student = student.try_into()?;
+
+        hm.entry(group_name)
+            .and_modify(|e| e.push(s.clone()))
+            .or_insert_with(|| vec![s]);
+    }
+
+    Ok(Group::from_hm(hm))
 }
 
 /// <https://docs.valence.desire2learn.com/res/grade.html#get--d2l-api-le-(version)-(orgUnitId)-grades-(gradeObjectId)-values->
@@ -38,12 +63,6 @@ mod tests {
     use crate::models::BrightspaceClassList;
 
     use super::get_groups;
-
-    #[test]
-    #[ignore = "flaky"]
-    pub fn test_get_group() {
-        get_groups("SESSION_ID", "49218").unwrap()
-    }
 
     #[test]
     pub fn try_parse() {

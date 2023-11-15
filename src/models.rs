@@ -25,6 +25,20 @@ pub struct Group {
     pub members: Vec<Student>,
 }
 
+impl Group {
+    pub fn from_hm(hm: HashMap<String, Vec<Student>>) -> Vec<Self> {
+        let mut output = Vec::with_capacity(hm.capacity());
+        for (group, students) in hm {
+            output.push(Group {
+                name: group,
+                members: students,
+            });
+        }
+
+        output
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ProjectInfo {
     pub id: ProjectId,
@@ -93,10 +107,28 @@ pub struct BrightspaceProductVersions {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "PascalCase")]
-pub struct BrightspaceGradeObjects {
-    pub objects: Vec<BrightspaceGradeObject>,
+pub struct BrightspaceGroupRecord {
+    pub group_name: String,
+    pub group_category: String,
+    pub org_defined_id: Option<u64>,
+    pub username: String,
+    pub first_name: String,
+    pub last_name: String,
+    pub email: String,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct BrightspaceGradeObject {}
+impl TryInto<Student> for BrightspaceGroupRecord {
+    type Error = Report;
+
+    fn try_into(self) -> std::result::Result<Student, Self::Error> {
+        Ok(Student {
+            netid: self
+                .username
+                .strip_suffix("@tudelft.nl")
+                .wrap_err("failed to strip error")?
+                .to_string(),
+            student_number: self.org_defined_id,
+            email: self.email,
+        })
+    }
+}

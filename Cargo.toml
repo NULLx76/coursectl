@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gitlab = "=0.1603" # Matches gitlab version
+gitlab = "=0.1603" # Matches git version
 dotenv = "0.15"
 itertools = "0.11"
 http = "~0.2"
