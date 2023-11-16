@@ -16,7 +16,7 @@ mod projects;
 #[derive(Parser, Debug)]
 struct Args {
     /// Gitlab host
-    #[arg(long, default_value = "git.ewi.tudelft.nl")]
+    #[arg(long, default_value = "gitlab.ewi.tudelft.nl")]
     host: String,
 
     /// Gitlab API token

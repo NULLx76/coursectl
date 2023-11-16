@@ -5,6 +5,7 @@ use crate::models::{
 };
 use color_eyre::{eyre::Context, Result};
 use http::Uri;
+use itertools::Itertools;
 
 const BRIGHTSPACE_API_VERSION: &str = "1.72";
 
@@ -37,7 +38,7 @@ pub fn get_groups(sessionid: &str, category: &str) -> Result<Vec<Group>> {
         .into_string()?
         .lines()
         .filter(|line| !line.starts_with(','))
-        .fold(String::new(), |a, b| a + b + "\n");
+        .join("\n");
 
     let mut reader = csv::Reader::from_reader(s.as_bytes());
 
@@ -61,8 +62,6 @@ pub fn get_groups(sessionid: &str, category: &str) -> Result<Vec<Group>> {
 #[cfg(test)]
 mod tests {
     use crate::models::BrightspaceClassList;
-
-    use super::get_groups;
 
     #[test]
     pub fn try_parse() {
