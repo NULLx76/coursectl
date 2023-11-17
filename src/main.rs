@@ -71,6 +71,11 @@ enum SubCommand {
         branch: String,
     },
 
+    Unfork {
+        #[arg(required = true)]
+        group_id: u64
+    },
+
     GetClassList {
         #[arg(required = true)]
         course_id: u64,
@@ -264,6 +269,10 @@ fn main() -> Result<()> {
                 &groups,
                 args.dry_run,
             )?;
+        },
+
+        SubCommand::Unfork { group_id } => {
+            projects::unfork(&client, group_id, args.dry_run)?;
         }
     }
 
