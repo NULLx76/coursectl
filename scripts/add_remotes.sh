@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -xe
-data=$(cargo run -- projects 23180)
-repo="../../software-fundamentals/individual-assignment-template"
+data=$(cargo run -- projects 24389)
+repo="../../software-systems/student-template-repository"
 cd "$repo"
 while read -r line; do
   # shellcheck disable=SC2086

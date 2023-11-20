@@ -1,9 +1,12 @@
 use std::{fs::File, path::PathBuf};
 
-use crate::brightspace::get_groups;
 use clap::{Args, Parser, Subcommand};
-use color_eyre::eyre::{eyre, Context, ContextCompat, Result};
-use gitlab::{api::common::AccessLevel, Gitlab};
+use color_eyre::eyre::{Context, ContextCompat, Result};
+use git::create_repos;
+use gitlab::{
+    api::{common::AccessLevel, projects::repository::commits},
+    Gitlab,
+};
 
 use crate::git::projects;
 
@@ -43,6 +46,58 @@ enum Commands {
         #[command(flatten)]
         gitlab: GitlabArgs,
     },
+
+    Unfork {
+        #[arg(required = true)]
+        group_id: u64,
+
+        #[command(flatten)]
+        gitlab: GitlabArgs,
+    },
+
+    CreateIndividualRepos {
+        /// Brightspace Organizational Unit ID to use the classlist from
+        #[arg(long = "ou", required = true)]
+        brightspace_ou: u64,
+
+        #[command(flatten)]
+        brightspace: BrightspaceArgs,
+
+        #[command(flatten)]
+        gitlab: GitlabArgs,
+
+        #[command(flatten)]
+        project: GitlabProjectCreationArgs,
+
+        /// Prefix to add to all created repositories
+        #[arg(short = 'p', long = "prefix")]
+        repo_name_prefix: Option<String>,
+    },
+
+    CreateGroupReposBrightspace {
+        #[arg(short, long = "brightspace", required = true)]
+        brightspace_group_id: u64,
+
+        #[command(flatten)]
+        gitlab: GitlabArgs,
+
+        #[command(flatten)]
+        brightspace: BrightspaceArgs,
+
+        #[command(flatten)]
+        project: GitlabProjectCreationArgs,
+    },
+
+    ClasslistCsv {
+        #[arg(required = true)]
+        course_id: u64,
+
+        #[arg(short, long = "file", default_value = "classlist.csv")]
+        output_file: PathBuf,
+
+        #[command(flatten)]
+        brightspace: BrightspaceArgs,
+    },
 }
 
 #[derive(Debug, Args)]
@@ -65,107 +120,36 @@ struct BrightspaceArgs {
     #[arg(long, hide = true, default_value = "https://brightspace.tudelft.nl")]
     base_url: http::Uri,
 
+    /// Brightspace Cookie
     #[arg(long, env = "BRIGHTSPACE_COOKIE", hide_env_values = true)]
     cookie: String,
 
+    // Brightspace LTI Session ID
     #[arg(long, env = "BRIGHTSPACE_SESSIONID", hide_env_values = true)]
     session_id: String,
 }
 
-#[derive(Subcommand, Debug)]
-enum SubCommand {
-    /// Lists all projects in a given group with ssh clone url
-    Projects {
-        /// Gitlab group ID
-        #[arg(required = true)]
-        group_id: u64,
-    },
+#[derive(Debug, Args)]
+struct GitlabProjectCreationArgs {
+    /// Gitlab Group ID under which to create the repositories
+    #[arg(required = true)]
+    gitlab_group_id: u64,
 
-    ClasslistCsv {
-        #[arg(required = true)]
-        course_id: u64,
+    /// Template repository to initialize student repos with
+    #[arg(required = true, short, long = "template")]
+    template_repository: String,
 
-        #[arg(short, long = "file", default_value = "classlist.csv")]
-        output_file: PathBuf,
-    },
-
-    /// Unprotects a given branch on all projects in a given group
-    Unprotect {
-        /// Gitlab group ID
-        #[arg(required = true)]
-        group_id: u64,
-
-        /// Branch to unprotect
-        #[arg(default_value = "main")]
-        branch: String,
-    },
-
-    /// Removes the fork relationship of all projects under the given group
-    Unfork {
-        #[arg(required = true)]
-        group_id: u64
-    },
-
-    GetClassList {
-        #[arg(required = true)]
-        course_id: u64,
-    },
-
-    /// Create Gitlab repos for individual students under a certain group
-    CreateIndividualRepos {
-        /// Parent Group ID
-        #[arg(short, long, required = true)]
-        group_id: u64,
-
-        /// Template Repository to use for each student (has to be public)
-        #[arg(short, long = "template", required = true)]
-        template_repository: String,
-
-        /// Brightspace Organizational Unit (ID)
-        #[arg(long = "ou", required = true)]
-        brightspace_ou: u64,
-
-        /// Prefix to add to all created repositories
-        #[arg(short = 'p', long = "prefix")]
-        repo_name_prefix: Option<String>,
-
-        /// Specify the accesslevel of the users to be added to the repo
-        ///
-        /// Anonymous => 0,  
-        /// Guest => 10,  
-        /// Reporter => 20,  
-        /// Developer => 30,  
-        /// Maintainer => 40,
-        /// Owner => 50,
-        /// Admin => 60,
-        #[arg(short, long, default_value_t = AccessLevel::Developer.as_u64())]
-        access_level: u64,
-    },
-    CreateGroupsFromBrightspace {
-        /// Gitlab parent Group ID
-        #[arg(short, long, required = true)]
-        group_id: u64,
-
-        /// The brightspace groups category id
-        #[arg(short, long = "group_id", required = true)]
-        brightspace_group_category_id: u64,
-
-        /// Template Repository to use for each student
-        #[arg(short, long = "template", required = true)]
-        template_repository: String,
-
-        /// Specify the accesslevel of the users to be added to the repo
-        ///
-        /// Anonymous => 0,  
-        /// Guest => 10,  
-        /// Reporter => 20,  
-        /// Developer => 30,  
-        /// Maintainer => 40,
-        /// Owner => 50,
-        /// Admin => 60,
-        #[arg(short, long, default_value_t = AccessLevel::Developer.as_u64())]
-        access_level: u64,
-    },
+    /// Specify the accesslevel of the users to be added to the repo
+    ///
+    /// Anonymous => 0,  
+    /// Guest => 10,  
+    /// Reporter => 20,  
+    /// Developer => 30,  
+    /// Maintainer => 40,
+    /// Owner => 50,
+    /// Admin => 60,
+    #[arg(short, long, default_value_t = AccessLevel::Developer.as_u64())]
+    access_level: u64,
 }
 
 fn authenticate_template_repo_url(
@@ -210,114 +194,98 @@ fn main() -> Result<()> {
     // let client =
     match cli.command {
         Commands::Projects { gitlab, group_id } => {
-            let client = Gitlab::new(&gitlab.host, &gitlab.token).wrap_err("failed to create git client")?;
+            let client =
+                Gitlab::new(&gitlab.host, &gitlab.token).wrap_err("failed to create git client")?;
 
             projects::list(&client, group_id)?;
         }
-        Commands::Unprotect { gitlab, group_id, branch } => {
-            let client = Gitlab::new(&gitlab.host, &gitlab.token).wrap_err("failed to create git client")?;
+        Commands::Unprotect {
+            gitlab,
+            group_id,
+            branch,
+        } => {
+            let client =
+                Gitlab::new(&gitlab.host, &gitlab.token).wrap_err("failed to create git client")?;
 
             projects::unprotect(&client, group_id, &branch, cli.dry_run)?;
         }
-    }
+        Commands::Unfork { group_id, gitlab } => {
+            todo!()
+        }
+        Commands::ClasslistCsv {
+            course_id,
+            output_file,
+            brightspace,
+        } => {
+            let f = File::create(output_file).wrap_err("could not create output file")?;
+            let mut wtr = csv::Writer::from_writer(f);
 
-    // match args.cmd {
-    //     SubCommand::Projects { group_id } => projects::list(&client, group_id)?,
-    //     SubCommand::Unprotect { group_id, branch } => {
-    //         projects::unprotect(&client, group_id, &branch, args.dry_run)?;
-    //     }
-    //     SubCommand::CreateIndividualRepos {
-    //         group_id,
-    //         mut template_repository,
-    //         repo_name_prefix,
-    //         access_level,
-    //         brightspace_ou,
-    //     } => {
-    //
-    //         template_repository = authenticate_template_repo_url(
-    //             template_repository,
-    //             &args.host,
-    //             &args.gitlab_user,
-    //             &args.gitlab_token,
-    //         )?;
-    //
-    //         create_repos::create_individual_repos(
-    //             &client,
-    //             &repo_name_prefix,
-    //             group_id,
-    //             &template_repository,
-    //             u64_to_access_level(access_level),
-    //             &args.brightspace_cookie,
-    //             &args.brightspace_base_url,
-    //             brightspace_ou,
-    //             args.dry_run,
-    //         )?;
-    //     }
-    //     SubCommand::GetClassList { course_id } => {
-    //         let mut list = brightspace::get_students(
-    //             &args.brightspace_base_url,
-    //             &args.brightspace_cookie,
-    //             course_id,
-    //         )?;
-    //         list.sort_by_key(|s| s.netid.clone());
-    //         for entry in list {
-    //             println!("{:07}, {}", entry.student_number.unwrap_or(0), entry.netid);
-    //         }
-    //     }
-    //     SubCommand::ClasslistCsv {
-    //         course_id,
-    //         output_file,
-    //     } => {
-    //         let f = File::create(output_file).wrap_err("could not create output file")?;
-    //         let mut wtr = csv::Writer::from_writer(f);
-    //
-    //         brightspace::get_students(
-    //             &args.brightspace_base_url,
-    //             &args.brightspace_cookie,
-    //             course_id,
-    //         )?
-    //         .iter()
-    //         .try_for_each(|el| wtr.serialize(el))?;
-    //
-    //         wtr.flush()?;
-    //     }
-    //     SubCommand::CreateGroupsFromBrightspace {
-    //         group_id,
-    //         brightspace_group_category_id,
-    //         mut template_repository,
-    //         access_level,
-    //     } => {
-    //         if args.brightspace_session_id.is_empty() {
-    //             return Err(eyre!("brightspace_session_id missing!"));
-    //         }
-    //
-    //         template_repository = authenticate_template_repo_url(
-    //             template_repository,
-    //             &args.host,
-    //             &args.gitlab_user,
-    //             &args.gitlab_token,
-    //         )?;
-    //
-    //         let groups = get_groups(
-    //             &args.brightspace_session_id,
-    //             &brightspace_group_category_id.to_string(),
-    //         )?;
-    //
-    //         create_group_repos(
-    //             &client,
-    //             group_id,
-    //             &template_repository,
-    //             u64_to_access_level(access_level),
-    //             &groups,
-    //             args.dry_run,
-    //         )?;
-    //     },
-    //
-    //     SubCommand::Unfork { group_id } => {
-    //         todo!();
-    //         projects::unfork(&client, group_id, args.dry_run)?;
-    //     }
-    // }
+            brightspace::get_students(&brightspace.base_url, &brightspace.cookie, course_id)?
+                .iter()
+                .try_for_each(|el| wtr.serialize(el))?;
+
+            wtr.flush()?;
+        }
+        Commands::CreateIndividualRepos {
+            gitlab,
+            project,
+            repo_name_prefix,
+            brightspace,
+            brightspace_ou,
+        } => {
+            let client =
+                Gitlab::new(&gitlab.host, &gitlab.token).wrap_err("failed to create git client")?;
+
+            let template = authenticate_template_repo_url(
+                project.template_repository,
+                &gitlab.host,
+                &gitlab.user,
+                &gitlab.token,
+            )?;
+
+            create_repos::create_individual_repos(
+                &client,
+                &repo_name_prefix,
+                project.gitlab_group_id,
+                &template,
+                u64_to_access_level(project.access_level),
+                &brightspace.cookie,
+                &brightspace.base_url,
+                brightspace_ou,
+                cli.dry_run,
+            )?;
+        }
+        Commands::CreateGroupReposBrightspace {
+            brightspace_group_id,
+            gitlab,
+            brightspace,
+            project,
+        } => {
+            let client =
+                Gitlab::new(&gitlab.host, &gitlab.token).wrap_err("failed to create git client")?;
+
+            let template = authenticate_template_repo_url(
+                project.template_repository,
+                &gitlab.host,
+                &gitlab.user,
+                &gitlab.token,
+            )?;
+
+            let groups = brightspace::get_groups(
+                &brightspace.session_id,
+                &brightspace_group_id.to_string(),
+            )?;
+
+            create_repos::create_group_repos(
+                &client,
+                project.gitlab_group_id,
+                &template,
+                u64_to_access_level(project.access_level),
+                &groups,
+                cli.dry_run,
+            )?;
+        }
+    }
 
     Ok(())
 }
