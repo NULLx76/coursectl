@@ -54,7 +54,7 @@ pub fn unprotect(client: &Gitlab, group: u64, branch: &str, dry_run: bool) -> Re
 
         if branches.iter().any(|b| b.name == branch) {
             if dry_run {
-                println!("Dry Run: Unproteced {branch} on {}", project.name);
+                println!("Dry Run: unprotected {branch} on {}", project.name);
             } else {
                 let endpoint = UnprotectBranch::builder()
                     .project(project.id.value())
