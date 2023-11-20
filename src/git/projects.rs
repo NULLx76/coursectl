@@ -124,12 +124,15 @@ pub fn unfork(client: &Gitlab, group: u64, dry_run: bool) -> Result<()> {
                     eprintln!("git unfork error: {:?}", v.message);
                 }
             }
-            e@Err(_) => errors.push(e)
+            e @ Err(_) => errors.push(e),
         }
     }
 
     if !errors.is_empty() {
-        eprintln!("The following errors occured while unforking: {:#?}", errors);
+        eprintln!(
+            "The following errors occured while unforking: {:#?}",
+            errors
+        );
     }
 
     Ok(())

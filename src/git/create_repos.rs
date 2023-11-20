@@ -53,7 +53,7 @@ pub fn create_group_repos(
     Ok(())
 }
 
-/// TODO: Do we wanna fix the too many args?
+/// TODO: Pull out brightspace code
 #[allow(clippy::too_many_arguments)]
 pub fn create_individual_repos(
     client: &Gitlab,
