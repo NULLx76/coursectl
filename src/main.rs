@@ -3,10 +3,7 @@ use std::{fs::File, path::PathBuf};
 use clap::{Args, Parser, Subcommand};
 use color_eyre::eyre::{Context, ContextCompat, Result};
 use git::create_repos;
-use gitlab::{
-    api::{common::AccessLevel, projects::repository::commits},
-    Gitlab,
-};
+use gitlab::{api::common::AccessLevel, Gitlab};
 
 use crate::git::projects;
 

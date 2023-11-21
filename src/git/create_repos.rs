@@ -139,3 +139,55 @@ fn create_repo_from_template(
 
     invite::add_students_to_project(client, project.id, students, access_level)
 }
+
+fn fork_template(
+    client: &Gitlab,
+    students: &[&Student],
+    group_id: u64,
+    name: &str,
+    template_path: &str,
+    access_level: AccessLevel,
+) -> Result<()> {
+    let endpoint = projects::ForkProject::builder()
+        .visibility(VisibilityLevel::Private)
+        .project(template_path)
+        .namespace_id(group_id)
+        .name(name)
+        .path(name)
+        .build()
+        .wrap_err("fork builder")?;
+
+    let project: ProjectInfo = endpoint.query(client).wrap_err("fork project")?;
+
+    invite::add_students_to_project(client, project.id, students, access_level)?;
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::env;
+
+    use gitlab::Gitlab;
+
+    use super::fork_template;
+
+    #[test]
+    #[ignore = "flaky"]
+    fn test_fork() {
+        dotenv::dotenv().ok();
+        let token = env::var("GITLAB_COM_TOKEN").unwrap();
+
+        let client = Gitlab::new("gitlab.com", token).unwrap();
+
+        fork_template(
+            &client,
+            &[],
+            60104344,
+            "Test-666",
+            "0x76/multi-branch-test-project",
+            gitlab::api::common::AccessLevel::Developer,
+        )
+        .unwrap();
+    }
+}
