@@ -148,7 +148,7 @@ fn fork_template(
     template_path: &str,
     access_level: AccessLevel,
 ) -> Result<()> {
-    let endpoint = projects::ForkProject::builder()
+    let endpoint = projects::fork::ForkProject::builder()
         .visibility(VisibilityLevel::Private)
         .project(template_path)
         .namespace_id(group_id)

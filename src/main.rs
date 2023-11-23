@@ -207,7 +207,9 @@ fn main() -> Result<()> {
             projects::unprotect(&client, group_id, &branch, cli.dry_run)?;
         }
         Commands::Unfork { group_id, gitlab } => {
-            todo!()
+            let client =
+                Gitlab::new(&gitlab.host, &gitlab.token).wrap_err("failed to create git client")?;
+            projects::unfork(&client, group_id, cli.dry_run)?;
         }
         Commands::ClasslistCsv {
             course_id,
