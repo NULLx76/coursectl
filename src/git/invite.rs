@@ -69,11 +69,9 @@ fn query_user(client: &Gitlab, student: &Student) -> Result<Option<UserInfo>> {
         Ok((!users.is_empty()).then(|| users.swap_remove(0)))
     }
 
-    let student1 = format!("{}1", student.netid); // How much of a hack is this?
+    // let student1 = format!("{}1", student.netid); // How much of a hack is this?
 
-    Ok(query_user_by_username(client, &student.netid)?
-        .or(query_user_by_email(client, student)?)
-        .or(query_user_by_username(client, student1.as_str())?))
+    Ok(query_user_by_username(client, &student.netid)?.or(query_user_by_email(client, student)?))
 }
 
 /// Invites students to an existing project if userid is known
