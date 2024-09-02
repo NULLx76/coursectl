@@ -3,7 +3,7 @@ set -xe
 
 groups=$(cargo run -- projects 24389)
 branch="main"
-dir="student_solutions_$(date --iso-8601=seconds)"
+dir="student_solutions_$(date --iso-8601=hours)"
 
 mkdir -p "$dir"
 cd "$dir"

@@ -92,6 +92,9 @@ enum Commands {
         #[arg(short, long = "file", default_value = "classlist.csv")]
         output_file: PathBuf,
 
+        #[arg(long, default_value_t = false)]
+        gitbull: bool,
+
         #[command(flatten)]
         brightspace: BrightspaceArgs,
     },
@@ -209,20 +212,26 @@ fn main() -> Result<()> {
         Commands::Unfork { group_id, gitlab } => {
             let client =
                 Gitlab::new(&gitlab.host, &gitlab.token).wrap_err("failed to create git client")?;
-            projects::unfork(&client, group_id, cli.dry_run)?;
+            // projects::unfork(&client, group_id, cli.dry_run)?;
         }
         Commands::ClasslistCsv {
             course_id,
             output_file,
             brightspace,
+            gitbull,
         } => {
             let f = File::create(output_file).wrap_err("could not create output file")?;
             let mut wtr = csv::Writer::from_writer(f);
 
-            brightspace::get_students(&brightspace.base_url, &brightspace.cookie, course_id)?
-                .iter()
-                .try_for_each(|el| wtr.serialize(el))?;
+            let out =
+                brightspace::get_students(&brightspace.base_url, &brightspace.cookie, course_id)?;
 
+            if gitbull {
+                out.iter()
+                    .try_for_each(|el| wtr.write_record(&[&el.netid, &el.email, &el.netid]))?;
+            } else {
+                out.iter().try_for_each(|el| wtr.serialize(el))?;
+            }
             wtr.flush()?;
         }
         Commands::CreateIndividualRepos {

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -xe
-repo="../../software-fundamentals/individual-assignment-template"
+repo="/home/vivian/src/cese/real-time-systems/assignment-a-template"
 cd "$repo"
 
 # CONFIG

@@ -6,7 +6,7 @@ use color_eyre::{
 use gitlab::{api::{
     groups::projects::GroupProjects,
     ignore, paged,
-    projects::{protected_branches::{ProtectedBranches, UnprotectBranch}, fork::{UnforkProject}}, Query,
+    projects::{protected_branches::{ProtectedBranches, UnprotectBranch}}, Query,
 }, Gitlab};
 use gitlab::api::ApiError;
 use indicatif::ProgressIterator;
@@ -67,25 +67,25 @@ pub fn unprotect(client: &Gitlab, group: u64, branch: &str, dry_run: bool) -> Re
     Ok(())
 }
 
-pub fn unfork(client: &Gitlab, group: u64, dry_run: bool) -> Result<()> {
-    let projects = get_projects_by_group(client, group)?;
+// pub fn unfork(client: &Gitlab, group: u64, dry_run: bool) -> Result<()> {
+//     let projects = get_projects_by_group(client, group)?;
 
-    for project in projects.into_iter().progress() {
-        if dry_run {
-            println!("Dry Run: Unforking project {}", project.id.value());
-            continue;
-        }
+//     for project in projects.into_iter().progress() {
+//         if dry_run {
+//             println!("Dry Run: Unforking project {}", project.id.value());
+//             continue;
+//         }
 
-        let endpoint = UnforkProject::builder().project(project.id.value()).build()?;
+//         let endpoint = UnforkProject::builder().project(project.id.value()).build()?;
 
-        match ignore(endpoint).query(client) {
-            Ok(_) => {}
-            Err(ApiError::GitlabService { status, ..}) if status.as_u16() == 304 => {
-                // not a fork
-            }
-            e@Err(_) => e?,
-        }
-    }
+//         match ignore(endpoint).query(client) {
+//             Ok(_) => {}
+//             Err(ApiError::GitlabService { status, ..}) if status.as_u16() == 304 => {
+//                 // not a fork
+//             }
+//             e@Err(_) => e?,
+//         }
+//     }
 
-    Ok(())
-}
+//     Ok(())
+// }
