@@ -32,6 +32,7 @@ enum Commands {
         gitlab: GitlabArgs,
     },
 
+    /// Unprotect all branches within a certain group
     Unprotect {
         /// The group id to unprotect the branches for
         #[arg(required = true)]
@@ -44,6 +45,7 @@ enum Commands {
         gitlab: GitlabArgs,
     },
 
+    /// Remove the fork relation from all project within a certain group
     Unfork {
         #[arg(required = true)]
         group_id: u64,
@@ -52,6 +54,8 @@ enum Commands {
         gitlab: GitlabArgs,
     },
 
+    /// Using a brightspace classlist create a repository for every student
+    /// NOTE: Are you sure you don't want to use GitBull?
     CreateIndividualRepos {
         /// Brightspace Organizational Unit ID to use the classlist from
         #[arg(long = "ou", required = true)]
@@ -71,6 +75,8 @@ enum Commands {
         repo_name_prefix: Option<String>,
     },
 
+    /// Using the brightspace groups, create corresponding repositories
+    /// NOTE: Are you sure you don't want to use GitBull?
     CreateGroupReposBrightspace {
         #[arg(short, long = "brightspace", required = true)]
         brightspace_group_id: u64,
@@ -85,6 +91,7 @@ enum Commands {
         project: GitlabProjectCreationArgs,
     },
 
+    /// Retrieve a CSV file containing all students from brightspace
     ClasslistCsv {
         #[arg(required = true)]
         course_id: u64,
@@ -92,6 +99,7 @@ enum Commands {
         #[arg(short, long = "file", default_value = "classlist.csv")]
         output_file: PathBuf,
 
+        /// Output using a gitbull compatible format [netid, email, netid]
         #[arg(long, default_value_t = false)]
         gitbull: bool,
 
@@ -126,7 +134,7 @@ struct BrightspaceArgs {
 
     // Brightspace LTI Session ID
     #[arg(long, env = "BRIGHTSPACE_SESSIONID", hide_env_values = true)]
-    session_id: String,
+    session_id: Option<String>,
 }
 
 #[derive(Debug, Args)]
@@ -269,6 +277,10 @@ fn main() -> Result<()> {
             brightspace,
             project,
         } => {
+            let session_id = brightspace
+                .session_id
+                .wrap_err("Brightspace LTI Session ID required for getting groups")?;
+
             let client =
                 Gitlab::new(&gitlab.host, &gitlab.token).wrap_err("failed to create git client")?;
 
@@ -279,10 +291,7 @@ fn main() -> Result<()> {
                 &gitlab.token,
             )?;
 
-            let groups = brightspace::get_groups(
-                &brightspace.session_id,
-                &brightspace_group_id.to_string(),
-            )?;
+            let groups = brightspace::get_groups(&session_id, &brightspace_group_id.to_string())?;
 
             create_repos::create_group_repos(
                 &client,
