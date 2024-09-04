@@ -1,4 +1,5 @@
 use crate::git::invite;
+use crate::BrightspaceArgs;
 use crate::{
     brightspace::get_students,
     models::{Group, ProjectInfo, Student},
@@ -53,20 +54,17 @@ pub fn create_group_repos(
     Ok(())
 }
 
-/// TODO: Pull out brightspace code
-#[allow(clippy::too_many_arguments)]
 pub fn create_individual_repos(
     client: &Gitlab,
     repo_name_prefix: &Option<String>,
     parent_namespace_id: u64,
     template_url: &str,
     access_level: AccessLevel,
-    brightspace_cookie: &str,
-    brightspace_base_url: &Uri,
+    brightspace_args: BrightspaceArgs,
     brightspace_ou: u64,
     dry_run: bool,
 ) -> Result<()> {
-    let students = get_students(brightspace_base_url, brightspace_cookie, brightspace_ou)
+    let students = get_students(&brightspace_args.base_url, &brightspace_args.cookie, brightspace_ou)
         .wrap_err("failed getting list of students from brightspace")?;
 
     let parent_project_names: Vec<String> =

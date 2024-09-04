@@ -3,11 +3,12 @@ use gitlab::{
     api::{
         groups::projects::GroupProjects,
         ignore, paged,
-        projects::protected_branches::{ProtectedBranches, UnprotectBranch},
+        projects::{protected_branches::{ProtectedBranches, UnprotectBranch}, repository::branches::{Branches, CreateBranch, DeleteBranch}},
         Query,
     },
     Gitlab,
 };
+
 use indicatif::ProgressIterator;
 use serde::Deserialize;
 
@@ -33,6 +34,7 @@ pub fn list(client: &Gitlab, id: u64) -> Result<()> {
 #[derive(Debug, Deserialize)]
 struct Branch {
     name: String,
+    default: bool,
 }
 
 pub fn unprotect(client: &Gitlab, group: u64, branch: &str, dry_run: bool) -> Result<()> {
@@ -62,6 +64,35 @@ pub fn unprotect(client: &Gitlab, group: u64, branch: &str, dry_run: bool) -> Re
         }
     }
     println!("Unprotected {branch} on {n} projects successfully");
+
+    Ok(())
+}
+
+pub fn remove_non_default_branches(client: &Gitlab, group: u64, dry_run: bool) -> Result<()> {
+    let projects = get_projects_by_group(client, group)?;
+
+    for project in projects.into_iter().progress() {
+        let endpoint = Branches::builder()
+            .project(project.id)
+            .build()?;
+
+        let branches: Vec<Branch> = endpoint.query(client)?;
+
+        for branch in branches {
+            if !branch.default {
+                if dry_run {
+                    println!("Dry Run: Deleting branch {} on {}", branch.name, project.name);
+                } else {
+                    let endpoint = DeleteBranch::builder()
+                        .project(project.id)
+                        .branch(branch.name)
+                        .build()?;
+
+                    ignore(endpoint).query(client)?;
+                }
+            }
+        }
+    }
 
     Ok(())
 }

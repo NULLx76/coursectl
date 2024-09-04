@@ -55,6 +55,16 @@ enum Commands {
         gitlab: GitlabArgs,
     },
 
+    /// Removes all branches that are not the default one
+    /// WARNING: This is a destructive operation
+    RemoveNonDefaultBranches {
+        #[arg(required = true)]
+        group_id: u64,
+
+        #[command(flatten)]
+        gitlab: GitlabArgs,
+    },
+
     /// Using a brightspace classlist create a repository for every student
     /// NOTE: Are you sure you don't want to use GitBull?
     CreateIndividualRepos {
@@ -223,6 +233,11 @@ fn main() -> Result<()> {
                 Gitlab::new(&gitlab.host, &gitlab.token).wrap_err("failed to create git client")?;
             // projects::unfork(&client, group_id, cli.dry_run)?;
         }
+        Commands::RemoveNonDefaultBranches { group_id, gitlab } => {
+            let client =
+                Gitlab::new(&gitlab.host, &gitlab.token).wrap_err("failed to create git client")?;
+            projects::remove_non_default_branches(&client, group_id, cli.dry_run)?;
+        }
         Commands::ClasslistCsv {
             course_id,
             output_file,
@@ -237,7 +252,7 @@ fn main() -> Result<()> {
 
             if gitbull {
                 out.iter()
-                    .try_for_each(|el| wtr.write_record(&[&el.netid, &el.email, &el.netid]))?;
+                    .try_for_each(|el| wtr.write_record([&el.netid, &el.email, &el.netid]))?;
             } else {
                 out.iter().try_for_each(|el| wtr.serialize(el))?;
             }
@@ -266,8 +281,7 @@ fn main() -> Result<()> {
                 project.gitlab_group_id,
                 &template,
                 u64_to_access_level(project.access_level),
-                &brightspace.cookie,
-                &brightspace.base_url,
+                brightspace,
                 brightspace_ou,
                 cli.dry_run,
             )?;
