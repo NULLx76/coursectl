@@ -207,7 +207,7 @@ fn u64_to_access_level(access: u64) -> AccessLevel {
 
 fn main() -> Result<()> {
     color_eyre::install()?;
-    dotenv::dotenv().ok();
+    dotenvy::dotenv().ok();
     let cli = Cli::parse();
 
     // let client =
