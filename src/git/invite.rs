@@ -4,7 +4,7 @@ use color_eyre::{Result, Section};
 use gitlab::api::common::AccessLevel;
 use gitlab::api::projects::members;
 use gitlab::api::{ignore, users, Client, FormParams, Query, RestClient};
-use gitlab::{Gitlab, ProjectId, UserId};
+use gitlab::Gitlab;
 use http::header;
 use http::request::Builder as RequestBuilder;
 use itertools::Itertools;
@@ -17,7 +17,7 @@ use serde::Deserialize;
 /// * If not, invite the student via e-mail
 pub fn add_students_to_project(
     client: &Gitlab,
-    project: ProjectId,
+    project: u64,
     students: &[&Student],
     access_level: AccessLevel,
 ) -> Result<()> {
@@ -42,7 +42,7 @@ pub fn add_students_to_project(
 
 #[derive(Debug, Deserialize)]
 pub struct UserInfo {
-    id: UserId,
+    id: u64,
 }
 
 /// Queries Gitlab to see if a certain student already has a gitlab account, if so, return `UserInfo`.
@@ -77,7 +77,7 @@ fn query_user(client: &Gitlab, student: &Student) -> Result<Option<UserInfo>> {
 /// Invites students to an existing project if userid is known
 fn invite_by_userinfo(
     client: &Gitlab,
-    id: ProjectId,
+    id: u64,
     students: &[UserInfo],
     access_level: AccessLevel,
 ) -> Result<()> {
@@ -86,8 +86,8 @@ fn invite_by_userinfo(
     }
 
     let endpoint = members::AddProjectMember::builder()
-        .project(id.value())
-        .users(students.iter().map(|u| u.id.value()))
+        .project(id)
+        .users(students.iter().map(|u| u.id))
         .access_level(access_level)
         .build()
         .wrap_err("invite users by id builder")?;
@@ -103,7 +103,7 @@ fn invite_by_userinfo(
 /// See <https://docs.gitlab.com/ee/api/invitations.html>
 pub fn invite_by_email(
     client: &Gitlab,
-    id: ProjectId,
+    id: u64,
     students: &[&Student],
     access_level: AccessLevel,
 ) -> Result<()> {

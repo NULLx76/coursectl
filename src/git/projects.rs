@@ -1,14 +1,13 @@
-
-
-use color_eyre::{
-    eyre::{Result},
+use color_eyre::eyre::Result;
+use gitlab::{
+    api::{
+        groups::projects::GroupProjects,
+        ignore, paged,
+        projects::protected_branches::{ProtectedBranches, UnprotectBranch},
+        Query,
+    },
+    Gitlab,
 };
-use gitlab::{api::{
-    groups::projects::GroupProjects,
-    ignore, paged,
-    projects::{protected_branches::{ProtectedBranches, UnprotectBranch}}, Query,
-}, Gitlab};
-use gitlab::api::ApiError;
 use indicatif::ProgressIterator;
 use serde::Deserialize;
 
@@ -42,7 +41,7 @@ pub fn unprotect(client: &Gitlab, group: u64, branch: &str, dry_run: bool) -> Re
 
     for project in projects.into_iter().progress() {
         let endpoint = ProtectedBranches::builder()
-            .project(project.id.value())
+            .project(project.id)
             .build()?;
 
         let branches: Vec<Branch> = endpoint.query(client)?;
@@ -52,7 +51,7 @@ pub fn unprotect(client: &Gitlab, group: u64, branch: &str, dry_run: bool) -> Re
                 println!("Dry Run: unprotected {branch} on {}", project.name);
             } else {
                 let endpoint = UnprotectBranch::builder()
-                    .project(project.id.value())
+                    .project(project.id)
                     .name(branch)
                     .build()?;
 

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use color_eyre::{eyre::ContextCompat, Report, Result};
-use gitlab::ProjectId;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -41,7 +40,7 @@ impl Group {
 
 #[derive(Debug, Deserialize)]
 pub struct ProjectInfo {
-    pub id: ProjectId,
+    pub id: u64,
     pub name: String,
     pub ssh_url_to_repo: String,
 }
