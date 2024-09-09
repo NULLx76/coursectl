@@ -173,7 +173,7 @@ mod tests {
     #[test]
     #[ignore = "flaky"]
     fn test_fork() {
-        dotenv::dotenv().ok();
+        dotenvy::dotenv().ok();
         let token = env::var("GITLAB_COM_TOKEN").unwrap();
 
         let client = Gitlab::new("gitlab.com", token).unwrap();

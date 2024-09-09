@@ -140,12 +140,12 @@ struct BrightspaceArgs {
     base_url: http::Uri,
 
     /// Brightspace Cookie
-    #[arg(long, env = "BRIGHTSPACE_COOKIE", hide_env_values = true)]
+    #[arg(long, env = "BRIGHTSPACE_COOKIE", default_value_t = retrieve_brightspace_cookies(),  hide_env_values = true)]
     cookie: String,
 
     // Brightspace LTI Session ID
-    #[arg(long, env = "BRIGHTSPACE_SESSIONID", hide_env_values = true)]
-    session_id: Option<String>,
+    #[arg(long, env = "BRIGHTSPACE_SESSIONID", default_value_t = retrieve_brightspace_cookies(), hide_env_values = true)]
+    session_id: String,
 }
 
 #[derive(Debug, Args)]
@@ -205,12 +205,23 @@ fn u64_to_access_level(access: u64) -> AccessLevel {
     }
 }
 
+fn retrieve_brightspace_cookies() -> String {
+    use rookie::common::enums::CookieToString;
+    let domains = vec!["brightspace.tudelft.nl".to_owned(), "group-impexp.lti.tudelft.nl".to_owned()];
+    if let Ok(cookies) = rookie::firefox(Some(domains.clone())) {
+        cookies.to_string()
+    } else if let Ok(cookies) = rookie::chromium(Some(domains)) {
+        cookies.to_string()
+    } else {
+        String::new()
+    }
+}
+
 fn main() -> Result<()> {
     color_eyre::install()?;
     dotenvy::dotenv().ok();
     let cli = Cli::parse();
 
-    // let client =
     match cli.command {
         Commands::Projects { gitlab, group_id } => {
             let client =
@@ -292,9 +303,7 @@ fn main() -> Result<()> {
             brightspace,
             project,
         } => {
-            let session_id = brightspace
-                .session_id
-                .wrap_err("Brightspace LTI Session ID required for getting groups")?;
+            let session_id = brightspace.session_id;
 
             let client =
                 Gitlab::new(&gitlab.host, &gitlab.token).wrap_err("failed to create git client")?;
