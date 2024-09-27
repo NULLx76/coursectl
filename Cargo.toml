@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gitlab = { path = "../rust-gitlab" }
+gitlab = { git = "https://github.com/NULLx76/rust-gitlab.git" }
 dotenvy = "0.15"
 itertools = "0.13"
 http = "1.1"

@@ -1144,6 +1144,7 @@ checksum = "4271d37baee1b8c7e4b708028c57d816cf9d2434acb33a549475f78c181f6253"
 [[package]]
 name = "gitlab"
 version = "0.1703.0"
+source = "git+https://github.com/NULLx76/rust-gitlab.git#194606bbdc19625394bfcfb915d24a1ccdff4150"
 dependencies = [
  "async-trait",
  "base64",
