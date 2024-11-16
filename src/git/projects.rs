@@ -1,10 +1,9 @@
-use color_eyre::eyre::Result;
+use color_eyre::eyre::{Context as _, Result};
 use gitlab::{
     api::{
-        groups::projects::GroupProjects,
-        ignore, paged,
-        projects::{protected_branches::{ProtectedBranches, UnprotectBranch}, repository::branches::{Branches, CreateBranch, DeleteBranch}},
-        Query,
+        groups::projects::GroupProjects, ignore, paged, projects::{
+            fork::UnforkProject, protected_branches::{ProtectedBranches, UnprotectBranch}, repository::branches::{Branches, DeleteBranch}
+        }, ApiError, Query
     },
     Gitlab,
 };
@@ -42,9 +41,7 @@ pub fn unprotect(client: &Gitlab, group: u64, branch: &str, dry_run: bool) -> Re
     let mut n = 0;
 
     for project in projects.into_iter().progress() {
-        let endpoint = ProtectedBranches::builder()
-            .project(project.id)
-            .build()?;
+        let endpoint = ProtectedBranches::builder().project(project.id).build()?;
 
         let branches: Vec<Branch> = endpoint.query(client)?;
 
@@ -72,16 +69,17 @@ pub fn remove_non_default_branches(client: &Gitlab, group: u64, dry_run: bool) -
     let projects = get_projects_by_group(client, group)?;
 
     for project in projects.into_iter().progress() {
-        let endpoint = Branches::builder()
-            .project(project.id)
-            .build()?;
+        let endpoint = Branches::builder().project(project.id).build()?;
 
         let branches: Vec<Branch> = endpoint.query(client)?;
 
         for branch in branches {
             if !branch.default {
                 if dry_run {
-                    println!("Dry Run: Deleting branch {} on {}", branch.name, project.name);
+                    println!(
+                        "Dry Run: Deleting branch {} on {}",
+                        branch.name, project.name
+                    );
                 } else {
                     let endpoint = DeleteBranch::builder()
                         .project(project.id)
@@ -97,25 +95,25 @@ pub fn remove_non_default_branches(client: &Gitlab, group: u64, dry_run: bool) -
     Ok(())
 }
 
-// pub fn unfork(client: &Gitlab, group: u64, dry_run: bool) -> Result<()> {
-//     let projects = get_projects_by_group(client, group)?;
+pub fn unfork(client: &Gitlab, group: u64, dry_run: bool) -> Result<()> {
+    let projects = get_projects_by_group(client, group)?;
+    for project in projects.into_iter().progress() {
+        if dry_run {
+            println!("Dry Run: Unforking project {}", project.id);
+            continue;
+        }
 
-//     for project in projects.into_iter().progress() {
-//         if dry_run {
-//             println!("Dry Run: Unforking project {}", project.id.value());
-//             continue;
-//         }
+        let endpoint = UnforkProject::builder()
+            .project(project.id)
+            .build()?;
 
-//         let endpoint = UnforkProject::builder().project(project.id.value()).build()?;
-
-//         match ignore(endpoint).query(client) {
-//             Ok(_) => {}
-//             Err(ApiError::GitlabService { status, ..}) if status.as_u16() == 304 => {
-//                 // not a fork
-//             }
-//             e@Err(_) => e?,
-//         }
-//     }
-
-//     Ok(())
-// }
+        match ignore(endpoint).query(client) {
+            Ok(_) => {}
+            Err(ApiError::GitlabService { status, .. }) if status.as_u16() == 304 => {
+                // not a fork
+            }
+            e @ Err(_) => e.wrap_err("Error occured unforking")?,
+        }
+    }
+    Ok(())
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -xe
 
-groups=$(cargo run -- projects 24389)
+groups=$(cargo run -- projects 30014)
 branch="main"
 dir="student_solutions_$(date --iso-8601=hours)"
 

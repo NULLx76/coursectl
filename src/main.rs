@@ -14,6 +14,7 @@ mod models;
 
 #[derive(Debug, Parser)]
 struct Cli {
+    /// Print what changes would be applied instead of applying them
     #[arg(long, default_value_t = false)]
     dry_run: bool,
 
@@ -48,6 +49,7 @@ enum Commands {
 
     /// Remove the fork relation from all project within a certain group
     Unfork {
+        /// The group id to unfork all repos under
         #[arg(required = true)]
         group_id: u64,
 
@@ -66,7 +68,6 @@ enum Commands {
     },
 
     /// Using a brightspace classlist create a repository for every student
-    /// NOTE: Are you sure you don't want to use GitBull?
     CreateIndividualRepos {
         /// Brightspace Organizational Unit ID to use the classlist from
         #[arg(long = "ou", required = true)]
@@ -87,8 +88,8 @@ enum Commands {
     },
 
     /// Using the brightspace groups, create corresponding repositories
-    /// NOTE: Are you sure you don't want to use GitBull?
     CreateGroupReposBrightspace {
+        /// The category id of the list of brightspace groups, visible in the edit url in brightspace
         #[arg(short, long = "brightspace", required = true)]
         brightspace_group_id: u64,
 
@@ -104,6 +105,7 @@ enum Commands {
 
     /// Retrieve a CSV file containing all students from brightspace
     ClasslistCsv {
+        /// The course's "ou" or orgUnitId
         #[arg(required = true)]
         course_id: u64,
 
@@ -121,11 +123,11 @@ enum Commands {
 
 #[derive(Debug, Args)]
 struct GitlabArgs {
-    /// Gitlab host
+    /// Gitlab host url
     #[arg(long, hide = true, default_value = "gitlab.ewi.tudelft.nl")]
     host: String,
 
-    /// Gitlab API user (connected to the token)
+    /// Gitlab API user (owner of the token)
     #[arg(long, env = "GITLAB_USER", hide_env_values = true)]
     user: String,
 
@@ -154,7 +156,7 @@ struct GitlabProjectCreationArgs {
     #[arg(required = true)]
     gitlab_group_id: u64,
 
-    /// Template repository to initialize student repos with
+    /// Template repository url to initialize student repos with
     #[arg(required = true, short, long = "template")]
     template_repository: String,
 
@@ -171,6 +173,7 @@ struct GitlabProjectCreationArgs {
     access_level: u64,
 }
 
+/// inserts `user:token` into http urls to be able to clone private repos
 fn authenticate_template_repo_url(
     mut template_repository: String,
     host: &str,
@@ -205,9 +208,13 @@ fn u64_to_access_level(access: u64) -> AccessLevel {
     }
 }
 
+/// Retrieves relevant brightspace cookies from browser jars
 fn retrieve_brightspace_cookies() -> String {
     use rookie::common::enums::CookieToString;
-    let domains = vec!["brightspace.tudelft.nl".to_owned(), "group-impexp.lti.tudelft.nl".to_owned()];
+    let domains = vec![
+        "brightspace.tudelft.nl".to_owned(),
+        "group-impexp.lti.tudelft.nl".to_owned(),
+    ];
     if let Ok(cookies) = rookie::firefox(Some(domains.clone())) {
         cookies.to_string()
     } else if let Ok(cookies) = rookie::chromium(Some(domains)) {
@@ -242,7 +249,7 @@ fn main() -> Result<()> {
         Commands::Unfork { group_id, gitlab } => {
             let client =
                 Gitlab::new(&gitlab.host, &gitlab.token).wrap_err("failed to create git client")?;
-            // projects::unfork(&client, group_id, cli.dry_run)?;
+            projects::unfork(&client, group_id, cli.dry_run)?;
         }
         Commands::RemoveNonDefaultBranches { group_id, gitlab } => {
             let client =
