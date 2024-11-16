@@ -10,3 +10,7 @@ Sometime you also need your brightspace (lti) session id, this can be found in t
 The program will automatically fetch these cookies from either Firefox or Chromium's cookies database.
 If you're getting unauthorized errors please visit these websites in your browser or manually set the cookies.
 
+
+## Scripts
+the `scripts/` directory contains various bash scripts that utilize `coursectl`'s output for performing mass actions on GitLab repos.
+Eventually the idea is to integrate these somehow into `coursectl` but for now they are just scripts.
